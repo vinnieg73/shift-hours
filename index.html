@@ -128,12 +128,7 @@ button:focus-visible, .seg button:focus-visible { outline: 2px solid var(--accen
 .unit { color: var(--muted); font-size: 13.5px; }
 .brow.span2 { display: grid; grid-template-columns: 56px minmax(0,1fr) auto minmax(0,1fr); gap: 10px; }
 @media (max-width: 640px) { .brow.span2 { grid-template-columns: minmax(0,1fr) auto; } .brow.span2 .bname { grid-column: 1 / -1; } .brow.span2 .tfield { grid-column: 1; } .brow.span2 .unit { grid-column: 2; grid-row: 2; } }
-.dock { display: none; }
 @media (max-width: 760px) {
-  .dock { display: flex; position: fixed; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); border-radius: 999px; z-index: 5; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 10px 12px 10px 20px; }
-  .dock b { font-family: var(--f-num); font-size: 24px; font-variant-numeric: tabular-nums; }
-  .dock span { font-family: var(--f-num); color: var(--muted); font-size: 15px; }
   .wrap { padding-block-end: 90px; }
 }
 .empty { color: var(--muted); font-size: 13.5px; margin: 8px 0 0; }
@@ -251,11 +246,6 @@ code { font-family: var(--font-r); font-weight: 600; font-size: 13px; background
   .ghost { min-height: 44px; padding-inline: 18px; }
   details.help summary { min-height: 48px; }
   .settings .srow { padding: 10px 0; min-height: 52px; }
-  .dock { display: grid; grid-template-columns: minmax(0,1fr) auto; grid-template-rows: auto auto; column-gap: 12px; row-gap: 0; align-items: center; padding: 10px 12px 10px 22px; }
-  .dock .label { grid-column: 1; grid-row: 1; align-self: end; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--label2); line-height: 1.2; }
-  .dock b { grid-column: 1; grid-row: 2; align-self: start; text-align: left; font-family: var(--f-num, ui-rounded, "SF Pro Rounded", system-ui); font-size: 30px; font-weight: 700; letter-spacing: -.03em; line-height: 1.05; color: var(--ink); }
-  .dock span:not(.label) { grid-column: 2; grid-row: 1 / span 2; min-width: 84px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0 18px; border-radius: 999px; background: var(--chip); color: var(--muted); font-size: 15px; font-weight: 700; box-shadow: inset 0 0 0 1px var(--field-edge); }
-  .dock span#dockDec:empty { display: none; }
 }
 @media (max-width: 420px) {
   .brow.span2 { gap: 8px; }
@@ -312,7 +302,6 @@ details.help ul li::marker { color: var(--label3); }
   .tin { transition: box-shadow .3s, border-color .2s, background-color .2s, transform .38s var(--spring); }
   .tin:focus { transform: scale(1.012); }
   details.help summary::before { transition: transform .35s var(--spring); }
-  .dock { animation: springIn .6s var(--spring) .4s both; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -376,9 +365,6 @@ code { font-size: 13px; letter-spacing: 0; }
 @media (max-width: 560px) {
   h1 { font-size: 26px; line-height: 1.15; letter-spacing: .012em; }
   .sub { font-size: 15px; }
-  .dock .label { font-size: 12px; letter-spacing: 0; }
-  .dock b { letter-spacing: .01em; }
-  .dock span:not(.label) { font-size: 15px; }
   .copy { font-size: 13px; }
 }
 /* header polish (p2) */
@@ -497,7 +483,6 @@ code { font-size: 14px; font-variant-numeric: tabular-nums; letter-spacing: .02e
 .copy:disabled { opacity: .45; cursor: default; transform: none !important; }
 .brow .rowerr { flex: 1 0 100%; grid-column: 1 / -1; margin: 0; padding-left: 4px; font-size: 13px; }
 .breaks .brow.span2 .rowerr { grid-column: 1; font-size: 13px; }
-@media (max-width: 760px) { html { scroll-padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); } }
 /* dial */
 .dialwrap .hl { font-size: 12.5px; fill: var(--label2); }
 .dialwrap .hl.m { fill: var(--label); }
@@ -505,12 +490,7 @@ code { font-size: 14px; font-variant-numeric: tabular-nums; letter-spacing: .02e
 /* surfaces */
 .glass { -webkit-backdrop-filter: blur(20px) saturate(120%); backdrop-filter: blur(20px) saturate(120%); }
 
-/* phone dock */
 @media (max-width: 760px) {
-  .dock.glass { background: rgba(20,22,34,.94); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
-  .dock .label { font-size: 13px; font-weight: 600; letter-spacing: .05em; color: var(--label2); }
-  .dock b { font-size: 28px; letter-spacing: -.01em; color: var(--label); }
-  .dock span:not(.label), #dockDec { font-size: 16px; font-weight: 600; color: rgba(235,236,250,.88); }
   .wrap { padding-block-end: calc(120px + env(safe-area-inset-bottom, 0px)); }
 }
 /* touch targets: 44px minimum on phones and touch devices */
@@ -574,7 +554,7 @@ html body .legend .span { font-size: 13.5px; }
 html body .foot { margin-top: 10px; }
 html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
 @media (max-width: 760px) {
-  html body .wrap { padding-inline: 12px; padding-block: 12px calc(76px + env(safe-area-inset-bottom, 0px)); }
+  html body .wrap { padding-inline: 12px; padding-block: 12px calc(24px + env(safe-area-inset-bottom, 0px)); }
   html body .card { padding: 14px; border-radius: 16px; }
   html body .grid { gap: 10px; }
   html body h1 { font-size: 20px; }
@@ -587,10 +567,6 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
   html body .settings .srow { padding: 6px 10px 6px 12px; min-height: 44px; }
   html body details.help summary { min-height: 44px; }
   html body .big .hm { font-size: 38px; }
-  html body .dock { padding: 6px 8px 6px 16px; }
-  html body .dock b { font-size: 22px; }
-  html body .dock span:not(.label) { min-height: 36px; min-width: 64px; padding: 0 12px; }
-  html body .dock .label { font-size: 10.5px; }
 }
 @media (max-width: 420px) { html body .hint { margin-left: 0; } html body .trow { grid-template-columns: 46px minmax(0,1fr); } }
 </style>
@@ -737,7 +713,6 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
   </main>
 </div>
 
-<div class="dock glass" aria-hidden="true"><span class="label">Decimal hrs</span><b id="dockHm">0.00</b><span id="dockDec">0:00</span></div>
 
 <script>
 (() => {
@@ -1005,8 +980,6 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
     const t = ok ? r.total : 0;
     setBig(ok ? (t / 60).toFixed(2) : '—', ok);
     $('hm2').textContent = ok ? hhmm(t) : '—';
-    $('dockHm').textContent = ok ? (t / 60).toFixed(2) : '—';
-    $('dockDec').textContent = ok ? hhmm(t) : '';
     $('dec').textContent = ok ? (t / 60).toFixed(2) : '—';
     $('mins').textContent = ok ? t.toLocaleString() : '—';
     $('brk').textContent = r.brk != null ? plural(r.brk, 'min').replace('mins', 'min') : '—';
