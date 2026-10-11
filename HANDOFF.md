@@ -17,11 +17,13 @@ A single-file shift hours calculator (`index.html`, no build step) served by Git
 - **Multiple tabs:** a tab writes only when its state differs from what it last read or wrote, and it takes other tabs' saves via the `storage` event (also re-read on becoming visible and on back/forward-cache restore). Unsaved edits in the current tab win. A save without a `week` key (from an old copy of the page) does not wipe the week rows.
 - **24:00:** valid only in 24-hour mode. Switching to 12-hour leaves `2400` as typed and flags it; switching back restores it.
 - Audit of 2026-10-11 (`fix/audit-2026-10-11`): all 3 Mediums fixed; Lows fixed except 15 and 19 (see open decisions), and 4 is only labelled.
+- **Visitor counter (2026-10-11):** Cloudflare Web Analytics beacon at the end of `index.html`. It is cookieless. Set up in Cloudflare under Observability > Web Analytics with "Enable with JS Snippet installation". DNS is on Cloudflare but not proxied (A records point straight at GitHub Pages), so automatic injection does not apply and the manual snippet is needed.
 
 ## Next steps
 
-1. Watch for feedback on the decimal change (see gotchas).
-2. Possible: an "Add to week" button that copies the calculator's result into today's row.
+1. Check visits appear in Cloudflare Web Analytics after deploy.
+2. Watch for feedback on the decimal change (see gotchas).
+3. Possible: an "Add to week" button that copies the calculator's result into today's row.
 
 ## Open decisions
 
