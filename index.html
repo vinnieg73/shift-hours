@@ -1026,8 +1026,8 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     return wrap;
   }
   function build() {
-    $('startField').replaceWith(Object.assign(timeField(S.start, 'startIn', 'Start time', 'fieldErr'), { id: 'startField' }));
-    $('endField').replaceWith(Object.assign(timeField(S.end, 'endIn', 'End time', 'fieldErr'), { id: 'endField' }));
+    $('startField').replaceWith(Object.assign(timeField(S.start, 'startIn', 'Start time', 'fieldErr hint'), { id: 'startField' }));
+    $('endField').replaceWith(Object.assign(timeField(S.end, 'endIn', 'End time', 'fieldErr hint'), { id: 'endField' }));
     $('hint').innerHTML = S.fmt === '24'
       ? 'Type <code>0915</code>, <code>1730</code>, or <code>17.5</code> for 17:30.'
       : 'Type <code>915</code> for 9:15, <code>9</code> for 9:00, or <code>9.5</code> for 9:30.';
@@ -1168,7 +1168,10 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     const l12 = S.fmt !== '24', names = l12 ? ['12a', '6a', '12p', '6p'] : ['0', '6', '12', '18'];
     $('hlabels').innerHTML = names.map((n, i) => { const [x, y] = pt(i * 360, 94); return `<text class="hl${i % 2 ? '' : ' m'}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="central">${n}</text>`; }).join('');
   }
+  // keeps the week's "today" highlight right when the page stays open past midnight
+  function markToday() { const t = (new Date().getDay() + 6) % 7; document.querySelectorAll('#wrows .wrow').forEach((r, i) => r.classList.toggle('today', i === t)); }
   function nowMark() {
+    markToday();
     const d = new Date(), [x, y] = pt(d.getHours() * 60 + d.getMinutes());
     const g = $('nowMark'); g.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)})`); g.setAttribute('visibility', 'visible');
   }
@@ -1217,7 +1220,7 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       if (be) { be.textContent = bm; be.hidden = !bm; }
     }
     const errs = Object.values(r.errs);
-    { const fe = $('fieldErr'), m = vis.start ? 'Start time: ' + vis.start : vis.end ? 'End time: ' + vis.end : '';
+    { const fe = $('fieldErr'), m = [vis.start && 'Start time: ' + vis.start, vis.end && 'End time: ' + vis.end].filter(Boolean).join(' \u00b7 ');
       if (fe) { fe.textContent = m; fe.hidden = !m; } }
     const ok = r.total != null && r.total >= 0 && !r.block;
     const t = ok ? r.total : 0;
@@ -1340,7 +1343,8 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       try { navigator.clipboard.writeText(txt).then(done, fail); } catch (e) { fail(); }
     });
   }
-  function selectText(id) { const r = document.createRange(); r.selectNodeContents($(id)); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  // select only the number for copying by hand, not the "hrs" unit after it
+  function selectText(id) { const el = $(id), r = document.createRange(), u = el.querySelector('small'); r.selectNodeContents(el); if (u) r.setEndBefore(u); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
   copier('copyDec', 'dec'); copier('copyHm', 'hm2'); copier('copyWeek', 'wDec');
 
   window.__hours = { parse, toMin, roundMin, span, compute, computeDay, renderWeek, normalise, get S() { return S; } };
