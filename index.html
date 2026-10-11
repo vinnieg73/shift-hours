@@ -598,6 +598,8 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
 .wbig { font-family: var(--font-r); font-weight: 700; font-size: 32px; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--label); }
 .wbig small { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--accent-text); margin-left: 6px; }
 .wsub { font-family: var(--font-r); font-size: 15px; font-weight: 600; color: var(--label2); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.wbig.part, .wbig.part + .wsub { opacity: .55; }
+.wwarn { margin: 8px 2px 0; font-size: 12.5px; font-weight: 600; color: var(--bad); }
 .wnote { margin: 8px 2px 0; font-size: 12.5px; color: var(--label3); }
 @media (max-width: 640px) {
   .wcols { display: none; }
@@ -770,6 +772,7 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       </div>
       <button type="button" class="copy" id="copyWeek" aria-label="Copy week total decimal hours">Copy</button>
     </div>
+    <p class="wwarn" id="wWarn" role="status" hidden></p>
     <p class="wnote">Uses the clock format and rounding set above. Break is in minutes.</p>
   </section>
   </main>
@@ -937,10 +940,11 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     return out;
   }
 
-  // one timesheet day -> { total, decs, err, bad }; same rounding as the calculator
+  // one timesheet day -> { state, total, decs, errs, need }; same rounding as the calculator.
+  // state: 'empty' (nothing typed), 'ok', 'open' (something missing) or 'bad' (an invalid field)
   function computeDay(D) {
-    const fmt = S.fmt, r = { decs: [], bad: {} };
-    const fail = (k, msg) => { r.bad[k] = true; if (!r.err) r.err = msg; };
+    const fmt = S.fmt, r = { decs: [], errs: {}, bad: {} };
+    const fail = (k, msg) => { r.bad[k] = true; r.errs[k] = msg; };
     const rd = (f, k) => {
       const p = parse(f.v, fmt);
       if (p && p.err) { fail(k, p.err); return null; }
@@ -951,14 +955,22 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     let brk = 0;
     const bs = String(D.brk || '').trim();
     if (bs) {
-      if (!/^\d{1,4}$/.test(bs)) fail('b', 'Break minutes must be a whole number');
+      const e = brkMinErr(bs);
+      if (e) fail('b', e);
       else { brk = +bs; if (S.round && S.roundBreaks) brk = roundMin(brk, S.round); }
     }
-    if (a == null || b == null || r.err) return r;
+    const typed = { s: !!String(D.s.v || '').trim(), e: !!String(D.e.v || '').trim() };
+    if (Object.keys(r.errs).length) { r.state = 'bad'; return r; }
+    if (a == null || b == null) {
+      if (!typed.s && !typed.e && !bs) { r.state = 'empty'; return r; }
+      r.state = 'open';
+      r.need = !typed.s && !typed.e ? 'Add start and end times' : !typed.s ? 'Add a start time' : 'Add an end time';
+      return r;
+    }
     const ra = roundMin(a, S.round), rb = roundMin(b, S.round);
     const gross = (rb === 1440 && ra === 0 && a !== b) ? 1440 : span(ra % 1440, rb % 1440);
-    if (brk > gross) { fail('b', 'Break is longer than the shift'); return r; }
-    r.total = gross - brk;
+    if (brk > gross) { fail('b', 'Break is longer than the shift'); r.state = 'bad'; return r; }
+    r.total = gross - brk; r.state = 'ok';
     return r;
   }
   const narrow = matchMedia('(max-width: 640px)');
@@ -1063,28 +1075,40 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       const u = document.createElement('span'); u.className = 'unit'; u.textContent = 'min';
       bw.append(bi, u); row.appendChild(bw);
       const h = document.createElement('div'); h.className = 'wh'; h.id = 'wh' + i; row.appendChild(h);
-      const m = document.createElement('p'); m.className = 'wmsg'; m.id = 'wmsg' + i; m.hidden = true; row.appendChild(m);
+      const m = document.createElement('p'); m.className = 'wmsg'; m.id = 'wmsg' + i; m.hidden = true; m.setAttribute('aria-live', 'polite'); row.appendChild(m);
       box.appendChild(row);
     });
   }
+  const FLD = { s: 'Start', e: 'End', b: 'Break' };
   function renderWeek() {
     let sum = 0, days = 0;
+    const left = [];
     S.week.forEach((D, i) => {
       const r = computeDay(D), id = weekIds(i);
-      // like the calculator, errors show once the field has lost focus
+      // like the calculator, red errors show once the field has lost focus
       const vis = Object.keys(r.bad).filter(k => seen.has(id[k]));
       ['s', 'e', 'b'].forEach(k => { const el = $(id[k]); if (!el) return; const bad = vis.includes(k); el.classList.toggle('bad', bad); if (bad) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid'); });
       const h = $('wh' + i), m = $('wmsg' + i);
-      if (r.total != null) { sum += r.total; days++; h.className = 'wh'; h.innerHTML = '<b>' + (r.total / 60).toFixed(2) + '</b><span>' + hhmm(r.total) + '</span>'; }
+      if (r.total != null) { sum += r.total; if (r.total > 0) days++; h.className = 'wh'; h.innerHTML = '<b>' + (r.total / 60).toFixed(2) + '</b><span>' + hhmm(r.total) + '</span>'; }
       else { h.className = 'wh none'; h.innerHTML = '<b>\u2014</b>'; }
-      const msg = vis.length ? r.err : r.decs.join(' \u00b7 ');
-      m.textContent = msg; m.hidden = !msg; m.classList.toggle('bad', !!vis.length);
+      if (r.state === 'bad' || r.state === 'open') left.push(DAYS[i]);
+      // each message names its own field; decimal notes stay alongside errors
+      const errs = vis.map(k => FLD[k] + ': ' + lc(r.errs[k]));
+      const info = [...(r.need ? [r.need] : []), ...r.decs];
+      const msg = [...errs, ...info].join(' \u00b7 ');
+      if (m.textContent !== msg) m.textContent = msg;
+      m.hidden = !msg; m.classList.toggle('bad', !!errs.length);
     });
     $('wDec').textContent = (sum / 60).toFixed(2);
     $('wHm').textContent = hhmm(sum);
     $('wDays').textContent = days ? '\u00b7 ' + plural(days, 'day') : '';
-    $('copyWeek').disabled = !days;
-    return { sum, days };
+    // a day that is unfinished or invalid is not counted, so say so and do not copy a short total
+    const w = $('wWarn'), wt = left.length ? left.join(', ') + ' not counted yet. Finish or clear ' + (left.length > 1 ? 'them' : 'it') + ' to copy the week.' : '';
+    if (w.textContent !== wt) w.textContent = wt;
+    w.hidden = !wt;
+    $('wDec').closest('.wbig').classList.toggle('part', !!left.length);
+    $('copyWeek').disabled = !sum || !!left.length;
+    return { sum, days, left };
   }
   function placePill(seg) {
     const b = seg.querySelector('button[aria-pressed="true"]');
