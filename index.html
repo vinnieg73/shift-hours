@@ -790,8 +790,8 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     week: Array.from({ length: 7 }, () => ({ s: { v: '', ap: 'am' }, e: { v: '', ap: 'pm' }, brk: '' }))
   };
   const KEY = 'shift-hours-v1';
-  let S;
-  try { S = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { S = null; }
+  let S, last = null; // last: the stored text this tab last read or wrote
+  try { last = localStorage.getItem(KEY); S = JSON.parse(last) || null; } catch (e) { S = null; }
   function normalise(raw) {
     const D = JSON.parse(JSON.stringify(DEFAULT));
     if (!raw || typeof raw !== 'object') return D;
@@ -817,7 +817,13 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
   }
   S = normalise(S);
   let saveT = 0;
-  const flush = () => { clearTimeout(saveT); saveT = 0; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+  // writes only when this tab's state differs from what it last read or wrote, so an idle
+  // older tab being hidden or closed cannot put its stale copy over another tab's edits
+  const flush = () => {
+    clearTimeout(saveT); saveT = 0;
+    const txt = JSON.stringify(S); if (txt === last) return;
+    try { localStorage.setItem(KEY, txt); last = txt; } catch (e) {}
+  };
   const save = () => { clearTimeout(saveT); saveT = setTimeout(flush, 250); };
   window.addEventListener('pagehide', flush);
   const $ = id => document.getElementById(id);
@@ -1151,12 +1157,32 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
   }
   let nowT = setInterval(nowMark, 30000);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { clearInterval(nowT); flush(); } else { nowMark(); clearInterval(nowT); nowT = setInterval(nowMark, 30000); }
+    if (document.hidden) { clearInterval(nowT); flush(); } else { syncFromStorage(); nowMark(); clearInterval(nowT); nowT = setInterval(nowMark, 30000); }
   });
   const seen = new Set(['startIn', 'endIn', 'bmin0', 'bmin1', 'bmin2', 'bs0', 'bs1', 'bs2', 'be0', 'be1', 'be2', ...[0, 1, 2, 3, 4, 5, 6].flatMap(i => Object.values(weekIds(i)))]);
   const idOf = k => k === 'start' ? 'startIn' : k === 'end' ? 'endIn' : /^b\d/.test(k) ? 'bmin' + k.slice(1) : k;
   let annT = 0;
   function announce(txt, now) { clearTimeout(annT); const go = () => { $('status').textContent = txt; }; if (now) go(); else annT = setTimeout(go, 700); }
+
+  // ---- other tabs ----
+  // another tab saved: take its state, unless this tab has edits waiting to be written (those win)
+  function adopt(txt) {
+    if (txt == null || txt === last || saveT) return;
+    let raw; try { raw = JSON.parse(txt); } catch (e) { return; }
+    if (!raw || typeof raw !== 'object') return;
+    // a tab still running an older copy of the page saves without week rows; keep ours
+    const keepWeek = !('week' in raw) ? S.week : null;
+    const next = normalise(raw);
+    if (keepWeek) next.week = keepWeek;
+    last = keepWeek ? null : txt; // with week restored, write the merged state back
+    const act = document.activeElement, id = act && act.id, sel = act && act.selectionStart != null ? [act.selectionStart, act.selectionEnd] : null;
+    S = next;
+    build();
+    if (id && $(id)) { const el = $(id); el.focus(); if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch (e) {} }
+  }
+  window.addEventListener('storage', e => { if (e.key === KEY && e.storageArea === localStorage) adopt(e.newValue); });
+  const syncFromStorage = () => { try { adopt(localStorage.getItem(KEY)); } catch (e) {} };
+  window.addEventListener('pageshow', e => { if (e.persisted) syncFromStorage(); });
 
   // ---- render ----
   function update() {
@@ -1286,7 +1312,13 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
   copier('copyDec', 'dec'); copier('copyHm', 'hm2'); copier('copyWeek', 'wDec');
 
   window.__hours = { parse, toMin, roundMin, span, compute, computeDay, renderWeek, normalise, get S() { return S; } };
-  try { build(); } catch (e) { try { localStorage.removeItem(KEY); } catch (e2) {} S = normalise(null); build(); }
+  // if saved state breaks the page, keep a copy of it (instead of deleting it) and start fresh
+  try { build(); } catch (e) {
+    console.error(e);
+    try { const old = localStorage.getItem(KEY); if (old) localStorage.setItem(KEY + '-backup', old); } catch (e2) {}
+    S = normalise(null);
+    try { build(); } catch (e3) { console.error(e3); }
+  }
 })();
 </script>
 
