@@ -598,6 +598,8 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
 .wbig { font-family: var(--font-r); font-weight: 700; font-size: 32px; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--label); }
 .wbig small { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--accent-text); margin-left: 6px; }
 .wsub { font-family: var(--font-r); font-size: 15px; font-weight: 600; color: var(--label2); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.wbig.part, .wbig.part + .wsub { opacity: .55; }
+.wwarn { margin: 8px 2px 0; font-size: 12.5px; font-weight: 600; color: var(--bad); }
 .wnote { margin: 8px 2px 0; font-size: 12.5px; color: var(--label3); }
 @media (max-width: 640px) {
   .wcols { display: none; }
@@ -770,6 +772,7 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       </div>
       <button type="button" class="copy" id="copyWeek" aria-label="Copy week total decimal hours">Copy</button>
     </div>
+    <p class="wwarn" id="wWarn" role="status" hidden></p>
     <p class="wnote">Uses the clock format and rounding set above. Break is in minutes.</p>
   </section>
   </main>
@@ -787,8 +790,8 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     week: Array.from({ length: 7 }, () => ({ s: { v: '', ap: 'am' }, e: { v: '', ap: 'pm' }, brk: '' }))
   };
   const KEY = 'shift-hours-v1';
-  let S;
-  try { S = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { S = null; }
+  let S, last = null; // last: the stored text this tab last read or wrote
+  try { last = localStorage.getItem(KEY); S = JSON.parse(last) || null; } catch (e) { S = null; }
   function normalise(raw) {
     const D = JSON.parse(JSON.stringify(DEFAULT));
     if (!raw || typeof raw !== 'object') return D;
@@ -814,7 +817,13 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
   }
   S = normalise(S);
   let saveT = 0;
-  const flush = () => { clearTimeout(saveT); saveT = 0; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+  // writes only when this tab's state differs from what it last read or wrote, so an idle
+  // older tab being hidden or closed cannot put its stale copy over another tab's edits
+  const flush = () => {
+    clearTimeout(saveT); saveT = 0;
+    const txt = JSON.stringify(S); if (txt === last) return;
+    try { localStorage.setItem(KEY, txt); last = txt; } catch (e) {}
+  };
   const save = () => { clearTimeout(saveT); saveT = setTimeout(flush, 250); };
   window.addEventListener('pagehide', flush);
   const $ = id => document.getElementById(id);
@@ -827,10 +836,18 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     if (!s) return null;
     let h, m, dec = false;
     const c = s.match(/^(\d{1,2})\s*:\s*(\d{1,2})$/), d = s.match(/^(\d{0,2})[.,](\d{1,3})$/);
-    if (c) { h = +c[1]; m = +c[2]; }
+    let approx = false;
+    if (c) {
+      // "9:5" could mean 9:05 or 9:50, so ask instead of guessing
+      if (c[2].length < 2) return { err: 'Use two digits for minutes, like 9:05 or 9:50' };
+      h = +c[1]; m = +c[2];
+    }
     else if (d && (d[1] || d[2])) {
-      const t = Math.round((+(d[1] || 0) + +('0.' + d[2])) * 60);
-      h = Math.floor(t / 60); m = t % 60; dec = true;
+      // the hour is checked as typed; minutes round to the nearest whole minute but never carry
+      // into the next hour, so 11.999 stays 11:59 instead of becoming 12:00 (the wrong half of the day)
+      const f = +('0.' + d[2]) * 60;
+      h = +(d[1] || 0); m = Math.min(59, Math.round(f)); dec = true;
+      approx = Math.abs(f - m) > 1e-9;
     }
     else if (/^\d{1,2}[.,]$/.test(s)) { h = +s.slice(0, -1); m = 0; }
     else if (/^\d{1,4}$/.test(s)) {
@@ -838,9 +855,9 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       else { h = +s.slice(0, s.length - 2); m = +s.slice(-2); }
     } else return { err: 'Use numbers like 915, 9:15 or 9.25' };
     if (m > 59) return { err: 'Minutes go up to 59' };
-    if (fmt === '12') { if (h < 1 || h > 12) return { err: 'Hours go from 1 to 12' }; }
+    if (fmt === '12') { if (h === 24 && m === 0) return { err: 'For 24:00 switch to 24-hour' }; if (h < 1 || h > 12) return { err: 'Hours go from 1 to 12' }; }
     else if (h > 24 || (h === 24 && m > 0)) return { err: 'Hours go from 0 to 23' };
-    return { h, m, dec };
+    return { h, m, dec, approx };
   }
   // minute of day (0..1440)
   function toMin(p, ap, fmt) {
@@ -860,9 +877,16 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     if (fmt === '24') return String(h).padStart(2, '0') + ':' + mm;
     return ((h % 12) || 12) + ':' + mm + (h < 12 ? ' AM' : ' PM');
   }
+  // the end of a full day: 24:00, not 0:00
+  const endClock = (min, fmt, full) => full ? (fmt === '24' ? '24:00' : '12:00 AM (next day)') : clock(min, fmt);
+  const sameNote = (a, b) => (a % 1440 === b % 1440 ? 'Start and end are the same time' : 'Rounding made start and end the same') + ', so 0 hours';
   const hhmm = t => Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
   const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
-  const decNote = (v, p) => 'Read ' + String(v).trim() + ' as ' + p.h + ':' + String(p.m).padStart(2, '0');
+  const decNote = (v, p) => 'Read ' + String(v).trim() + ' as ' + p.h + ':' + String(p.m).padStart(2, '0') + (p.approx ? ' (nearest minute)' : '');
+
+  // break minutes: '' when fine, else why not
+  const brkMinErr = s => !/^\d+$/.test(s) ? 'Use whole minutes, like 30' : +s > 1440 ? 'Break minutes go up to 1440' : '';
+  const lc = t => t.charAt(0).toLowerCase() + t.slice(1);
 
   function compute() {
     const fmt = S.fmt, out = { errs: {}, notes: [], breaks: [], decs: [] };
@@ -870,34 +894,50 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       const p = parse(f.v, fmt);
       if (p && p.err) { out.errs[key] = p.err; return null; }
       if (p && p.dec) out.decs.push(decNote(f.v, p));
+      if (p && moved.has(f)) out.decs.push(moved.get(f));
       return p ? toMin(p, f.ap, fmt) : null;
     };
     let a = read(S.start, 'start'), b = read(S.end, 'end');
-    if (a == null || b == null) return out;
-    const ra = roundMin(a, S.round), rb = roundMin(b, S.round);
-    if (S.round && (ra !== a || rb !== b)) out.notes.push('Rounded to ' + clock(ra, fmt) + ' – ' + clock(rb, fmt));
-    const full = rb === 1440 && ra === 0 && a !== b;
-    a = ra % 1440; b = rb % 1440;
-    const gross = full ? 1440 : span(a, b);
-    out.overnight = !full && b < a;
-    const raw = [];
-    let brk = 0;
+    // breaks are checked even before both times are in (as the week rows do).
+    // A bad or half-filled break pauses the total, so a too-high number is never shown or copied.
+    const mins = [], times = [];
+    let block = null;
     for (let i = 0; i < S.nBreaks; i++) {
-      const B = S.br[i];
+      const B = S.br[i], n = 'Break ' + (i + 1);
       if (S.breakMode === 'min') {
         const s = String(B.min || '').trim();
         if (!s) continue;
-        if (!/^\d{1,4}$/.test(s)) { out.errs['b' + i] = 'Break minutes must be a whole number'; continue; }
-        let n = +s; if (S.round && S.roundBreaks) n = roundMin(n, S.round);
-        brk += n;
+        const e = brkMinErr(s);
+        if (e) { out.errs['b' + i] = e; block = block || { bad: true, msg: 'fix ' + n.toLowerCase() + ' (' + lc(e) + ')' }; continue; }
+        mins.push(+s);
       } else {
-        let x = read(B.s, 'bs' + i), y = read(B.e, 'be' + i);
-        if (x == null || y == null) continue;
-        if (S.round && S.roundBreaks) { x = roundMin(x, S.round) % 1440; y = roundMin(y, S.round) % 1440; }
-        const len = span(x, y);
-        if (len) raw.push({ off: span(a, x), len });
+        const x = read(B.s, 'bs' + i), y = read(B.e, 'be' + i);
+        if (out.errs['bs' + i] || out.errs['be' + i]) { block = block || { bad: true, msg: 'fix ' + n.toLowerCase() + (out.errs['bs' + i] ? ' start (' + lc(out.errs['bs' + i]) : ' end (' + lc(out.errs['be' + i])) + ')' }; continue; }
+        if (x == null && y == null) continue;
+        if (x == null || y == null) { block = block || { msg: 'add the ' + (x == null ? 'start' : 'end') + ' time of ' + n.toLowerCase() }; continue; }
+        times.push([x, y]);
       }
     }
+    if (a == null || b == null) return out;
+    const ra = roundMin(a, S.round), rb = roundMin(b, S.round);
+    const full = rb === 1440 && ra === 0 && a !== b;
+    if (S.round && (ra !== a || rb !== b)) out.notes.push('Rounded to ' + clock(ra, fmt) + ' – ' + endClock(rb, fmt, full));
+    const a0 = a, b0 = b;
+    a = ra % 1440; b = rb % 1440;
+    const gross = full ? 1440 : span(a, b);
+    if (!gross) out.notes.push(sameNote(a0, b0));
+    // judged on the times as typed too, so rounding a start up to midnight keeps the badge
+    out.overnight = !full && gross > 0 && (b < a || b0 < a0);
+    out.gross = gross; out.a = a; out.b = b; out.full = full;
+    if (block) { out.block = block; return out; }
+    const raw = [];
+    let brk = 0;
+    mins.forEach(n => { brk += S.round && S.roundBreaks ? roundMin(n, S.round) : n; });
+    times.forEach(([x, y]) => {
+      if (S.round && S.roundBreaks) { x = roundMin(x, S.round) % 1440; y = roundMin(y, S.round) % 1440; }
+      const len = span(x, y);
+      if (len) raw.push({ off: span(a, x), len });
+    });
     if (raw.length) {
       // clip each break to the shift window, then merge overlaps
       let clipped = false; const pieces = [];
@@ -915,34 +955,45 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       merged.forEach(m => { brk += m[1] - m[0]; out.breaks.push({ from: (a + m[0]) % 1440, len: m[1] - m[0] }); });
       if (clipped) out.notes.push('Part of a break is outside the shift, so it is not deducted');
     }
-    out.gross = gross; out.brk = brk; out.a = a; out.b = b;
+    out.brk = brk;
     out.total = gross - brk;
     if (out.total < 0) out.errs.total = 'Breaks are longer than the shift';
     return out;
   }
 
-  // one timesheet day -> { total, decs, err, bad }; same rounding as the calculator
+  // one timesheet day -> { state, total, decs, errs, need }; same rounding as the calculator.
+  // state: 'empty' (nothing typed), 'ok', 'open' (something missing) or 'bad' (an invalid field)
   function computeDay(D) {
-    const fmt = S.fmt, r = { decs: [], bad: {} };
-    const fail = (k, msg) => { r.bad[k] = true; if (!r.err) r.err = msg; };
+    const fmt = S.fmt, r = { decs: [], errs: {}, bad: {} };
+    const fail = (k, msg) => { r.bad[k] = true; r.errs[k] = msg; };
     const rd = (f, k) => {
       const p = parse(f.v, fmt);
       if (p && p.err) { fail(k, p.err); return null; }
       if (p && p.dec) r.decs.push(decNote(f.v, p));
+      if (p && moved.has(f)) r.decs.push(moved.get(f));
       return p ? toMin(p, f.ap, fmt) : null;
     };
     const a = rd(D.s, 's'), b = rd(D.e, 'e');
     let brk = 0;
     const bs = String(D.brk || '').trim();
     if (bs) {
-      if (!/^\d{1,4}$/.test(bs)) fail('b', 'Break minutes must be a whole number');
+      const e = brkMinErr(bs);
+      if (e) fail('b', e);
       else { brk = +bs; if (S.round && S.roundBreaks) brk = roundMin(brk, S.round); }
     }
-    if (a == null || b == null || r.err) return r;
+    const typed = { s: !!String(D.s.v || '').trim(), e: !!String(D.e.v || '').trim() };
+    if (Object.keys(r.errs).length) { r.state = 'bad'; return r; }
+    if (a == null || b == null) {
+      if (!typed.s && !typed.e && !bs) { r.state = 'empty'; return r; }
+      r.state = 'open';
+      r.need = !typed.s && !typed.e ? 'Add start and end times' : !typed.s ? 'Add a start time' : 'Add an end time';
+      return r;
+    }
     const ra = roundMin(a, S.round), rb = roundMin(b, S.round);
     const gross = (rb === 1440 && ra === 0 && a !== b) ? 1440 : span(ra % 1440, rb % 1440);
-    if (brk > gross) { fail('b', 'Break is longer than the shift'); return r; }
-    r.total = gross - brk;
+    if (!gross) r.decs.unshift(sameNote(a, b));
+    if (brk > gross) { fail('b', 'Break is longer than the shift'); r.state = 'bad'; return r; }
+    r.total = gross - brk; r.state = 'ok';
     return r;
   }
   const narrow = matchMedia('(max-width: 640px)');
@@ -957,7 +1008,7 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     inp.className = 'tin'; inp.id = id; inp.type = 'text'; inp.inputMode = 'decimal'; inp.setAttribute('enterkeyhint', 'next');
     if (descId) inp.setAttribute('aria-describedby', descId);
     inp.placeholder = S.fmt === '24' ? '1730' : '915'; inp.value = f.v; inp.setAttribute('aria-label', label);
-    inp.addEventListener('input', () => { f.v = inp.value; seen.delete(id); update(); });
+    inp.addEventListener('input', () => { f.v = inp.value; moved.delete(f); seen.delete(id); update(); });
     inp.addEventListener('blur', () => { seen.add(id); update(); });
     wrap.appendChild(inp);
     if (S.fmt === '12') {
@@ -975,8 +1026,8 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     return wrap;
   }
   function build() {
-    $('startField').replaceWith(Object.assign(timeField(S.start, 'startIn', 'Start time', 'fieldErr'), { id: 'startField' }));
-    $('endField').replaceWith(Object.assign(timeField(S.end, 'endIn', 'End time', 'fieldErr'), { id: 'endField' }));
+    $('startField').replaceWith(Object.assign(timeField(S.start, 'startIn', 'Start time', 'fieldErr hint'), { id: 'startField' }));
+    $('endField').replaceWith(Object.assign(timeField(S.end, 'endIn', 'End time', 'fieldErr hint'), { id: 'endField' }));
     $('hint').innerHTML = S.fmt === '24'
       ? 'Type <code>0915</code>, <code>1730</code>, or <code>17.5</code> for 17:30.'
       : 'Type <code>915</code> for 9:15, <code>9</code> for 9:00, or <code>9.5</code> for 9:30.';
@@ -1047,28 +1098,40 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       const u = document.createElement('span'); u.className = 'unit'; u.textContent = 'min';
       bw.append(bi, u); row.appendChild(bw);
       const h = document.createElement('div'); h.className = 'wh'; h.id = 'wh' + i; row.appendChild(h);
-      const m = document.createElement('p'); m.className = 'wmsg'; m.id = 'wmsg' + i; m.hidden = true; row.appendChild(m);
+      const m = document.createElement('p'); m.className = 'wmsg'; m.id = 'wmsg' + i; m.hidden = true; m.setAttribute('aria-live', 'polite'); row.appendChild(m);
       box.appendChild(row);
     });
   }
+  const FLD = { s: 'Start', e: 'End', b: 'Break' };
   function renderWeek() {
     let sum = 0, days = 0;
+    const left = [];
     S.week.forEach((D, i) => {
       const r = computeDay(D), id = weekIds(i);
-      // like the calculator, errors show once the field has lost focus
+      // like the calculator, red errors show once the field has lost focus
       const vis = Object.keys(r.bad).filter(k => seen.has(id[k]));
       ['s', 'e', 'b'].forEach(k => { const el = $(id[k]); if (!el) return; const bad = vis.includes(k); el.classList.toggle('bad', bad); if (bad) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid'); });
       const h = $('wh' + i), m = $('wmsg' + i);
-      if (r.total != null) { sum += r.total; days++; h.className = 'wh'; h.innerHTML = '<b>' + (r.total / 60).toFixed(2) + '</b><span>' + hhmm(r.total) + '</span>'; }
+      if (r.total != null) { sum += r.total; if (r.total > 0) days++; h.className = 'wh'; h.innerHTML = '<b>' + (r.total / 60).toFixed(2) + '</b><span>' + hhmm(r.total) + '</span>'; }
       else { h.className = 'wh none'; h.innerHTML = '<b>\u2014</b>'; }
-      const msg = vis.length ? r.err : r.decs.join(' \u00b7 ');
-      m.textContent = msg; m.hidden = !msg; m.classList.toggle('bad', !!vis.length);
+      if (r.state === 'bad' || r.state === 'open') left.push(DAYS[i]);
+      // each message names its own field; decimal notes stay alongside errors
+      const errs = vis.map(k => FLD[k] + ': ' + lc(r.errs[k]));
+      const info = [...(r.need ? [r.need] : []), ...r.decs];
+      const msg = [...errs, ...info].join(' \u00b7 ');
+      if (m.textContent !== msg) m.textContent = msg;
+      m.hidden = !msg; m.classList.toggle('bad', !!errs.length);
     });
     $('wDec').textContent = (sum / 60).toFixed(2);
     $('wHm').textContent = hhmm(sum);
     $('wDays').textContent = days ? '\u00b7 ' + plural(days, 'day') : '';
-    $('copyWeek').disabled = !days;
-    return { sum, days };
+    // a day that is unfinished or invalid is not counted, so say so and do not copy a short total
+    const w = $('wWarn'), wt = left.length ? left.join(', ') + ' not counted yet. Finish or clear ' + (left.length > 1 ? 'them' : 'it') + ' to copy the week.' : '';
+    if (w.textContent !== wt) w.textContent = wt;
+    w.hidden = !wt;
+    $('wDec').closest('.wbig').classList.toggle('part', !!left.length);
+    $('copyWeek').disabled = !sum || !!left.length;
+    return { sum, days, left };
   }
   function placePill(seg) {
     const b = seg.querySelector('button[aria-pressed="true"]');
@@ -1105,18 +1168,41 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     const l12 = S.fmt !== '24', names = l12 ? ['12a', '6a', '12p', '6p'] : ['0', '6', '12', '18'];
     $('hlabels').innerHTML = names.map((n, i) => { const [x, y] = pt(i * 360, 94); return `<text class="hl${i % 2 ? '' : ' m'}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" text-anchor="middle" dominant-baseline="central">${n}</text>`; }).join('');
   }
+  // keeps the week's "today" highlight right when the page stays open past midnight
+  function markToday() { const t = (new Date().getDay() + 6) % 7; document.querySelectorAll('#wrows .wrow').forEach((r, i) => r.classList.toggle('today', i === t)); }
   function nowMark() {
+    markToday();
     const d = new Date(), [x, y] = pt(d.getHours() * 60 + d.getMinutes());
     const g = $('nowMark'); g.setAttribute('transform', `translate(${x.toFixed(2)} ${y.toFixed(2)})`); g.setAttribute('visibility', 'visible');
   }
   let nowT = setInterval(nowMark, 30000);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { clearInterval(nowT); flush(); } else { nowMark(); clearInterval(nowT); nowT = setInterval(nowMark, 30000); }
+    if (document.hidden) { clearInterval(nowT); flush(); } else { syncFromStorage(); nowMark(); clearInterval(nowT); nowT = setInterval(nowMark, 30000); }
   });
   const seen = new Set(['startIn', 'endIn', 'bmin0', 'bmin1', 'bmin2', 'bs0', 'bs1', 'bs2', 'be0', 'be1', 'be2', ...[0, 1, 2, 3, 4, 5, 6].flatMap(i => Object.values(weekIds(i)))]);
   const idOf = k => k === 'start' ? 'startIn' : k === 'end' ? 'endIn' : /^b\d/.test(k) ? 'bmin' + k.slice(1) : k;
   let annT = 0;
   function announce(txt, now) { clearTimeout(annT); const go = () => { $('status').textContent = txt; }; if (now) go(); else annT = setTimeout(go, 700); }
+
+  // ---- other tabs ----
+  // another tab saved: take its state, unless this tab has edits waiting to be written (those win)
+  function adopt(txt) {
+    if (txt == null || txt === last || saveT) return;
+    let raw; try { raw = JSON.parse(txt); } catch (e) { return; }
+    if (!raw || typeof raw !== 'object') return;
+    // a tab still running an older copy of the page saves without week rows; keep ours
+    const keepWeek = !('week' in raw) ? S.week : null;
+    const next = normalise(raw);
+    if (keepWeek) next.week = keepWeek;
+    last = keepWeek ? null : txt; // with week restored, write the merged state back
+    const act = document.activeElement, id = act && act.id, sel = act && act.selectionStart != null ? [act.selectionStart, act.selectionEnd] : null;
+    S = next; moved.clear();
+    build();
+    if (id && $(id)) { const el = $(id); el.focus(); if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch (e) {} }
+  }
+  window.addEventListener('storage', e => { if (e.key === KEY && e.storageArea === localStorage) adopt(e.newValue); });
+  const syncFromStorage = () => { try { adopt(localStorage.getItem(KEY)); } catch (e) {} };
+  window.addEventListener('pageshow', e => { if (e.persisted) syncFromStorage(); });
 
   // ---- render ----
   function update() {
@@ -1134,26 +1220,28 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       if (be) { be.textContent = bm; be.hidden = !bm; }
     }
     const errs = Object.values(r.errs);
-    { const fe = $('fieldErr'), m = vis.start ? 'Start time: ' + vis.start : vis.end ? 'End time: ' + vis.end : '';
+    { const fe = $('fieldErr'), m = [vis.start && 'Start time: ' + vis.start, vis.end && 'End time: ' + vis.end].filter(Boolean).join(' \u00b7 ');
       if (fe) { fe.textContent = m; fe.hidden = !m; } }
-    const ok = r.total != null && r.total >= 0;
+    const ok = r.total != null && r.total >= 0 && !r.block;
     const t = ok ? r.total : 0;
     setBig(ok ? (t / 60).toFixed(2) : '—', ok);
     $('hm2').textContent = ok ? hhmm(t) : '—';
     $('dec').textContent = ok ? (t / 60).toFixed(2) : '—';
     $('mins').textContent = ok ? t.toLocaleString() : '—';
     $('brk').textContent = r.brk != null ? plural(r.brk, 'min').replace('mins', 'min') : '—';
-    if (ok) $('words').innerHTML = '<b>' + plural(Math.floor(t / 60), 'hour') + '</b>, <b>' + plural(t % 60, 'minute') + '</b>'; else $('words').textContent = (r.total == null && !errs.length ? 'Enter a start and end time.' : '');
+    if (ok) $('words').innerHTML = '<b>' + plural(Math.floor(t / 60), 'hour') + '</b>, <b>' + plural(t % 60, 'minute') + '</b>'; else $('words').textContent = (r.total == null && !r.block && !errs.length ? 'Enter a start and end time.' : '');
     const badges = $('badges'); badges.innerHTML = '';
     const add = (txt, cls) => { const s = document.createElement('span'); s.className = 'badge ' + (cls || ''); s.textContent = txt; badges.appendChild(s); };
-    [...new Set(Object.entries(vis).filter(([k]) => k !== 'start' && k !== 'end').map(([, v]) => v))].forEach(e => add(e, 'err'));
+    // break field errors show under their own row; the badge says the total is paused and why
+    if (r.block) add('No total yet: ' + r.block.msg, r.block.bad ? 'err' : 'b');
+    if (vis.total) add(vis.total, 'err');
     r.decs.forEach(n => add(n, 'b'));
     if (r.total != null) {
       if (r.overnight) add('Ends next day');
       r.notes.forEach(n => add(n, 'b'));
     }
     $('copyDec').disabled = $('copyHm').disabled = !ok;
-    announce(ok ? (t / 60).toFixed(2) + ' decimal hours, ' + plural(Math.floor(t / 60), 'hour') + ' ' + plural(t % 60, 'minute') : (Object.values(vis)[0] || ''));
+    announce(ok ? (t / 60).toFixed(2) + ' decimal hours, ' + plural(Math.floor(t / 60), 'hour') + ' ' + plural(t % 60, 'minute') : r.block ? 'No total yet: ' + r.block.msg : (Object.values(vis)[0] || ''));
     // dial
     if (r.a != null) {
       $('arc').setAttribute('d', arcPath(r.a, r.gross)); $('arcGlow').setAttribute('d', arcPath(r.a, r.gross));
@@ -1162,9 +1250,9 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       $('arcDots').innerHTML = `<circle cx="${sx.toFixed(2)}" cy="${sy.toFixed(2)}" r="2.6" fill="#fff" opacity=".95"/><circle cx="${ex.toFixed(2)}" cy="${ey.toFixed(2)}" r="2.6" fill="#fff" opacity=".95"/>`;
       nowMark();
       $('dialSpan').textContent = hhmm(r.gross);
-      $('dial').setAttribute('aria-label', '24-hour dial: ' + clock(r.a, S.fmt) + ' to ' + clock(r.b, S.fmt) + ', ' + hhmm(r.gross) + ' on site' + (r.breaks.length ? ', ' + plural(r.breaks.length, 'break') + ' shown' : ''));
-      $('spanText').textContent = clock(r.a, S.fmt) + ' → ' + clock(r.b, S.fmt);
-      $('note').textContent = r.brk ? hhmm(r.gross) + ' on site, minus ' + plural(r.brk, 'min').replace('mins', 'min') + ' of breaks' : 'No breaks deducted';
+      $('dial').setAttribute('aria-label', '24-hour dial: ' + clock(r.a, S.fmt) + ' to ' + endClock(r.b, S.fmt, r.full) + ', ' + hhmm(r.gross) + ' on site' + (r.breaks.length ? ', ' + plural(r.breaks.length, 'break') + ' shown' : ''));
+      $('spanText').textContent = clock(r.a, S.fmt) + ' → ' + endClock(r.b, S.fmt, r.full);
+      $('note').textContent = r.block ? '' : r.brk ? hhmm(r.gross) + ' on site, minus ' + plural(r.brk, 'min').replace('mins', 'min') + ' of breaks' : 'No breaks deducted';
     } else {
       $('arc').setAttribute('d', ''); $('arcGlow').setAttribute('d', ''); $('arcBreaks').innerHTML = ''; $('arcDots').innerHTML = ''; nowMark();
       $('dial').setAttribute('aria-label', '24-hour dial of the shift'); $('dialSpan').textContent = ''; $('spanText').textContent = ''; $('note').textContent = '';
@@ -1172,16 +1260,31 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
   }
 
   // ---- controls ----
-  function convertField(f, from, to) {
+  // fields whose meaning changed on a format switch -> note shown until the field is edited
+  const moved = new Map();
+  function convertField(f, from, to, label) {
     const p = parse(f.v, from);
-    if (!p || p.err) return;
-    const m = toMin(p, f.ap, from) % 1440, h = Math.floor(m / 60), mm = String(m % 60).padStart(2, '0');
+    if (!p) return;
+    if (p.err) {
+      // an entry that was invalid may become valid in the other format; say how it is now read
+      const q = parse(f.v, to);
+      if (q && !q.err && !(q.h === 24 && q.m === 0)) moved.set(f, label + ': ' + String(f.v).trim() + ' was not a ' + from + '-hour time, now read as ' + clock(toMin(q, f.ap, to), to));
+      return;
+    }
+    const m = toMin(p, f.ap, from);
+    // 24:00 has no 12-hour form; keep it as typed so it is flagged, and switching back restores it
+    if (m === 1440 && to === '12') return;
+    const h = Math.floor(m / 60), mm = String(m % 60).padStart(2, '0');
     if (to === '24') f.v = String(h).padStart(2, '0') + mm;
     else { f.v = ((h % 12) || 12) + mm; f.ap = h < 12 ? 'am' : 'pm'; }
+    moved.delete(f);
   }
   document.querySelectorAll('[data-fmt]').forEach(b => b.addEventListener('click', () => {
     const to = b.dataset.fmt; if (to === S.fmt) return;
-    [S.start, S.end, ...S.br.flatMap(x => [x.s, x.e]), ...S.week.flatMap(x => [x.s, x.e])].forEach(f => convertField(f, S.fmt, to));
+    const conv = (f, label) => convertField(f, S.fmt, to, label);
+    conv(S.start, 'Start'); conv(S.end, 'End');
+    S.br.forEach((x, i) => { conv(x.s, 'Break ' + (i + 1) + ' start'); conv(x.e, 'Break ' + (i + 1) + ' end'); });
+    S.week.forEach((x, i) => { conv(x.s, DAYS[i] + ' start'); conv(x.e, DAYS[i] + ' end'); });
     S.fmt = to; build();
   }));
   $('breakCount').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.nBreaks = +b.dataset.n; build(); } });
@@ -1240,11 +1343,18 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       try { navigator.clipboard.writeText(txt).then(done, fail); } catch (e) { fail(); }
     });
   }
-  function selectText(id) { const r = document.createRange(); r.selectNodeContents($(id)); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  // select only the number for copying by hand, not the "hrs" unit after it
+  function selectText(id) { const el = $(id), r = document.createRange(), u = el.querySelector('small'); r.selectNodeContents(el); if (u) r.setEndBefore(u); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
   copier('copyDec', 'dec'); copier('copyHm', 'hm2'); copier('copyWeek', 'wDec');
 
   window.__hours = { parse, toMin, roundMin, span, compute, computeDay, renderWeek, normalise, get S() { return S; } };
-  try { build(); } catch (e) { try { localStorage.removeItem(KEY); } catch (e2) {} S = normalise(null); build(); }
+  // if saved state breaks the page, keep a copy of it (instead of deleting it) and start fresh
+  try { build(); } catch (e) {
+    console.error(e);
+    try { const old = localStorage.getItem(KEY); if (old) localStorage.setItem(KEY + '-backup', old); } catch (e2) {}
+    S = normalise(null);
+    try { build(); } catch (e3) { console.error(e3); }
+  }
 })();
 </script>
 
