@@ -864,6 +864,10 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
   const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
   const decNote = (v, p) => 'Read ' + String(v).trim() + ' as ' + p.h + ':' + String(p.m).padStart(2, '0');
 
+  // break minutes: '' when fine, else why not
+  const brkMinErr = s => !/^\d+$/.test(s) ? 'Use whole minutes, like 30' : +s > 1440 ? 'Break minutes go up to 1440' : '';
+  const lc = t => t.charAt(0).toLowerCase() + t.slice(1);
+
   function compute() {
     const fmt = S.fmt, out = { errs: {}, notes: [], breaks: [], decs: [] };
     const read = (f, key) => {
@@ -873,6 +877,26 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       return p ? toMin(p, f.ap, fmt) : null;
     };
     let a = read(S.start, 'start'), b = read(S.end, 'end');
+    // breaks are checked even before both times are in (as the week rows do).
+    // A bad or half-filled break pauses the total, so a too-high number is never shown or copied.
+    const mins = [], times = [];
+    let block = null;
+    for (let i = 0; i < S.nBreaks; i++) {
+      const B = S.br[i], n = 'Break ' + (i + 1);
+      if (S.breakMode === 'min') {
+        const s = String(B.min || '').trim();
+        if (!s) continue;
+        const e = brkMinErr(s);
+        if (e) { out.errs['b' + i] = e; block = block || { bad: true, msg: 'fix ' + n.toLowerCase() + ' (' + lc(e) + ')' }; continue; }
+        mins.push(+s);
+      } else {
+        const x = read(B.s, 'bs' + i), y = read(B.e, 'be' + i);
+        if (out.errs['bs' + i] || out.errs['be' + i]) { block = block || { bad: true, msg: 'fix ' + n.toLowerCase() + (out.errs['bs' + i] ? ' start (' + lc(out.errs['bs' + i]) : ' end (' + lc(out.errs['be' + i])) + ')' }; continue; }
+        if (x == null && y == null) continue;
+        if (x == null || y == null) { block = block || { msg: 'add the ' + (x == null ? 'start' : 'end') + ' time of ' + n.toLowerCase() }; continue; }
+        times.push([x, y]);
+      }
+    }
     if (a == null || b == null) return out;
     const ra = roundMin(a, S.round), rb = roundMin(b, S.round);
     if (S.round && (ra !== a || rb !== b)) out.notes.push('Rounded to ' + clock(ra, fmt) + ' – ' + clock(rb, fmt));
@@ -880,24 +904,16 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     a = ra % 1440; b = rb % 1440;
     const gross = full ? 1440 : span(a, b);
     out.overnight = !full && b < a;
+    out.gross = gross; out.a = a; out.b = b;
+    if (block) { out.block = block; return out; }
     const raw = [];
     let brk = 0;
-    for (let i = 0; i < S.nBreaks; i++) {
-      const B = S.br[i];
-      if (S.breakMode === 'min') {
-        const s = String(B.min || '').trim();
-        if (!s) continue;
-        if (!/^\d{1,4}$/.test(s)) { out.errs['b' + i] = 'Break minutes must be a whole number'; continue; }
-        let n = +s; if (S.round && S.roundBreaks) n = roundMin(n, S.round);
-        brk += n;
-      } else {
-        let x = read(B.s, 'bs' + i), y = read(B.e, 'be' + i);
-        if (x == null || y == null) continue;
-        if (S.round && S.roundBreaks) { x = roundMin(x, S.round) % 1440; y = roundMin(y, S.round) % 1440; }
-        const len = span(x, y);
-        if (len) raw.push({ off: span(a, x), len });
-      }
-    }
+    mins.forEach(n => { brk += S.round && S.roundBreaks ? roundMin(n, S.round) : n; });
+    times.forEach(([x, y]) => {
+      if (S.round && S.roundBreaks) { x = roundMin(x, S.round) % 1440; y = roundMin(y, S.round) % 1440; }
+      const len = span(x, y);
+      if (len) raw.push({ off: span(a, x), len });
+    });
     if (raw.length) {
       // clip each break to the shift window, then merge overlaps
       let clipped = false; const pieces = [];
@@ -915,7 +931,7 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       merged.forEach(m => { brk += m[1] - m[0]; out.breaks.push({ from: (a + m[0]) % 1440, len: m[1] - m[0] }); });
       if (clipped) out.notes.push('Part of a break is outside the shift, so it is not deducted');
     }
-    out.gross = gross; out.brk = brk; out.a = a; out.b = b;
+    out.brk = brk;
     out.total = gross - brk;
     if (out.total < 0) out.errs.total = 'Breaks are longer than the shift';
     return out;
@@ -1136,24 +1152,26 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     const errs = Object.values(r.errs);
     { const fe = $('fieldErr'), m = vis.start ? 'Start time: ' + vis.start : vis.end ? 'End time: ' + vis.end : '';
       if (fe) { fe.textContent = m; fe.hidden = !m; } }
-    const ok = r.total != null && r.total >= 0;
+    const ok = r.total != null && r.total >= 0 && !r.block;
     const t = ok ? r.total : 0;
     setBig(ok ? (t / 60).toFixed(2) : '—', ok);
     $('hm2').textContent = ok ? hhmm(t) : '—';
     $('dec').textContent = ok ? (t / 60).toFixed(2) : '—';
     $('mins').textContent = ok ? t.toLocaleString() : '—';
     $('brk').textContent = r.brk != null ? plural(r.brk, 'min').replace('mins', 'min') : '—';
-    if (ok) $('words').innerHTML = '<b>' + plural(Math.floor(t / 60), 'hour') + '</b>, <b>' + plural(t % 60, 'minute') + '</b>'; else $('words').textContent = (r.total == null && !errs.length ? 'Enter a start and end time.' : '');
+    if (ok) $('words').innerHTML = '<b>' + plural(Math.floor(t / 60), 'hour') + '</b>, <b>' + plural(t % 60, 'minute') + '</b>'; else $('words').textContent = (r.total == null && !r.block && !errs.length ? 'Enter a start and end time.' : '');
     const badges = $('badges'); badges.innerHTML = '';
     const add = (txt, cls) => { const s = document.createElement('span'); s.className = 'badge ' + (cls || ''); s.textContent = txt; badges.appendChild(s); };
-    [...new Set(Object.entries(vis).filter(([k]) => k !== 'start' && k !== 'end').map(([, v]) => v))].forEach(e => add(e, 'err'));
+    // break field errors show under their own row; the badge says the total is paused and why
+    if (r.block) add('No total yet: ' + r.block.msg, r.block.bad ? 'err' : 'b');
+    if (vis.total) add(vis.total, 'err');
     r.decs.forEach(n => add(n, 'b'));
     if (r.total != null) {
       if (r.overnight) add('Ends next day');
       r.notes.forEach(n => add(n, 'b'));
     }
     $('copyDec').disabled = $('copyHm').disabled = !ok;
-    announce(ok ? (t / 60).toFixed(2) + ' decimal hours, ' + plural(Math.floor(t / 60), 'hour') + ' ' + plural(t % 60, 'minute') : (Object.values(vis)[0] || ''));
+    announce(ok ? (t / 60).toFixed(2) + ' decimal hours, ' + plural(Math.floor(t / 60), 'hour') + ' ' + plural(t % 60, 'minute') : r.block ? 'No total yet: ' + r.block.msg : (Object.values(vis)[0] || ''));
     // dial
     if (r.a != null) {
       $('arc').setAttribute('d', arcPath(r.a, r.gross)); $('arcGlow').setAttribute('d', arcPath(r.a, r.gross));
@@ -1164,7 +1182,7 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       $('dialSpan').textContent = hhmm(r.gross);
       $('dial').setAttribute('aria-label', '24-hour dial: ' + clock(r.a, S.fmt) + ' to ' + clock(r.b, S.fmt) + ', ' + hhmm(r.gross) + ' on site' + (r.breaks.length ? ', ' + plural(r.breaks.length, 'break') + ' shown' : ''));
       $('spanText').textContent = clock(r.a, S.fmt) + ' → ' + clock(r.b, S.fmt);
-      $('note').textContent = r.brk ? hhmm(r.gross) + ' on site, minus ' + plural(r.brk, 'min').replace('mins', 'min') + ' of breaks' : 'No breaks deducted';
+      $('note').textContent = r.block ? '' : r.brk ? hhmm(r.gross) + ' on site, minus ' + plural(r.brk, 'min').replace('mins', 'min') + ' of breaks' : 'No breaks deducted';
     } else {
       $('arc').setAttribute('d', ''); $('arcGlow').setAttribute('d', ''); $('arcBreaks').innerHTML = ''; $('arcDots').innerHTML = ''; nowMark();
       $('dial').setAttribute('aria-label', '24-hour dial of the shift'); $('dialSpan').textContent = ''; $('spanText').textContent = ''; $('note').textContent = '';
