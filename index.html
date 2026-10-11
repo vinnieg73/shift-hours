@@ -836,10 +836,18 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     if (!s) return null;
     let h, m, dec = false;
     const c = s.match(/^(\d{1,2})\s*:\s*(\d{1,2})$/), d = s.match(/^(\d{0,2})[.,](\d{1,3})$/);
-    if (c) { h = +c[1]; m = +c[2]; }
+    let approx = false;
+    if (c) {
+      // "9:5" could mean 9:05 or 9:50, so ask instead of guessing
+      if (c[2].length < 2) return { err: 'Use two digits for minutes, like 9:05 or 9:50' };
+      h = +c[1]; m = +c[2];
+    }
     else if (d && (d[1] || d[2])) {
-      const t = Math.round((+(d[1] || 0) + +('0.' + d[2])) * 60);
-      h = Math.floor(t / 60); m = t % 60; dec = true;
+      // the hour is checked as typed; minutes round to the nearest whole minute but never carry
+      // into the next hour, so 11.999 stays 11:59 instead of becoming 12:00 (the wrong half of the day)
+      const f = +('0.' + d[2]) * 60;
+      h = +(d[1] || 0); m = Math.min(59, Math.round(f)); dec = true;
+      approx = Math.abs(f - m) > 1e-9;
     }
     else if (/^\d{1,2}[.,]$/.test(s)) { h = +s.slice(0, -1); m = 0; }
     else if (/^\d{1,4}$/.test(s)) {
@@ -849,7 +857,7 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     if (m > 59) return { err: 'Minutes go up to 59' };
     if (fmt === '12') { if (h < 1 || h > 12) return { err: 'Hours go from 1 to 12' }; }
     else if (h > 24 || (h === 24 && m > 0)) return { err: 'Hours go from 0 to 23' };
-    return { h, m, dec };
+    return { h, m, dec, approx };
   }
   // minute of day (0..1440)
   function toMin(p, ap, fmt) {
@@ -871,7 +879,7 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
   }
   const hhmm = t => Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
   const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
-  const decNote = (v, p) => 'Read ' + String(v).trim() + ' as ' + p.h + ':' + String(p.m).padStart(2, '0');
+  const decNote = (v, p) => 'Read ' + String(v).trim() + ' as ' + p.h + ':' + String(p.m).padStart(2, '0') + (p.approx ? ' (nearest minute)' : '');
 
   // break minutes: '' when fine, else why not
   const brkMinErr = s => !/^\d+$/.test(s) ? 'Use whole minutes, like 30' : +s > 1440 ? 'Break minutes go up to 1440' : '';
