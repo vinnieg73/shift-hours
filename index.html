@@ -569,6 +569,48 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
   html body .big .hm { font-size: 38px; }
 }
 @media (max-width: 420px) { html body .hint { margin-left: 0; } html body .trow { grid-template-columns: 46px minmax(0,1fr); } }
+
+/* ==== weekly timesheet: one row per day, totals in minutes then shown as decimal + h:mm ==== */
+html body .card.week { margin-top: 12px; }
+.whead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.whead .label { margin: 0; }
+.wlist { border-radius: 12px; background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.12), inset 0 .5px 0 rgba(255,255,255,.18); overflow: hidden; }
+.wcols, .wrow { display: grid; grid-template-columns: 40px minmax(0,1fr) minmax(0,1fr) 90px 66px; grid-template-areas: "day s e b h" "msg msg msg msg msg"; align-items: center; column-gap: 10px; padding: 6px 10px 6px 12px; position: relative; }
+.wcols { grid-template-areas: "day s e b h"; padding-block: 0 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--label3); }
+.wcols span:nth-child(1) { grid-area: day; } .wcols span:nth-child(2) { grid-area: s; } .wcols span:nth-child(3) { grid-area: e; } .wcols span:nth-child(4) { grid-area: b; } .wcols span:nth-child(5) { grid-area: h; text-align: right; }
+.wrow + .wrow::before { content: ""; position: absolute; left: 12px; right: 0; top: 0; height: .5px; background: var(--sep); }
+.wday { grid-area: day; font-size: 14px; font-weight: 600; color: var(--label2); }
+.wrow.today .wday { color: var(--accent-text); }
+.wrow .tfield.ws { grid-area: s; } .wrow .tfield.we { grid-area: e; }
+.wbrk { grid-area: b; display: flex; align-items: center; gap: 5px; min-width: 0; }
+.wbrk .unit { font-size: 12px; color: var(--label3); }
+html body .wrow .tin { height: 34px; font-size: 17px; border-radius: 9px; padding: 0 8px; }
+html body .wrow .seg.ap { height: 34px; border-radius: 9px; }
+html body .wrow .seg.ap::before { border-radius: 7px; }
+html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7px; }
+.wh { grid-area: h; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15; font-family: var(--font-r); font-variant-numeric: tabular-nums; }
+.wh b { font-size: 16px; font-weight: 700; color: var(--label); }
+.wh span { font-size: 12px; font-weight: 600; color: var(--label3); }
+.wh.none b { color: var(--label3); font-weight: 600; }
+.wmsg { grid-area: msg; margin: 4px 0 0; font-size: 12.5px; font-weight: 600; color: var(--brk-text); }
+.wmsg.bad { color: var(--bad); }
+.wtotal { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding: 10px 12px 10px 14px; border-radius: 14px; background: rgba(255,255,255,.05); box-shadow: inset 0 0 0 .5px var(--edge-lo), inset 0 1px 0 rgba(255,255,255,.12); }
+.wbig { font-family: var(--font-r); font-weight: 700; font-size: 32px; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--label); }
+.wbig small { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--accent-text); margin-left: 6px; }
+.wsub { font-family: var(--font-r); font-size: 15px; font-weight: 600; color: var(--label2); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.wnote { margin: 8px 2px 0; font-size: 12.5px; color: var(--label3); }
+@media (max-width: 640px) {
+  .wcols { display: none; }
+  .wrow { grid-template-columns: repeat(4, minmax(0,1fr)); grid-template-areas: "day b b h" "s s e e" "msg msg msg msg"; row-gap: 6px; padding: 8px 10px 8px 12px; }
+  .wbrk { justify-self: end; }
+  html body .wbrk .tin { width: 52px; flex: none; }
+  .wbrk .unit::after { content: " break"; }
+  /* AM/PM shrinks to one tap-to-flip chip so two times fit side by side */
+  html body .wrow .seg.ap { padding: 0; background: transparent; box-shadow: none; }
+  html body .wrow .seg.ap::before { display: none; }
+  html body .wrow .seg.ap button[aria-pressed="false"] { display: none; }
+  html body .wrow .seg.ap button { width: 42px; min-width: 0; border-radius: 9px; background: var(--thumb); box-shadow: var(--thumb-shadow); }
+}
 </style>
 
 
@@ -626,7 +668,7 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
         <div class="trow"><label class="label" for="startIn">Start</label><div class="tfield" id="startField"></div></div>
         <div class="trow"><label class="label" for="endIn">End</label><div class="tfield" id="endField"></div></div>
       </div>
-      <p class="hint" id="hint">Type <code>915</code> for 9:15 or <code>9</code> for 9:00. A colon works too.</p>
+      <p class="hint" id="hint">Type <code>915</code> for 9:15, <code>9</code> for 9:00, or <code>9.5</code> for 9:30.</p>
 
       <p class="fielderr" id="fieldErr" role="status" hidden></p>
 
@@ -659,6 +701,7 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
           <summary>How it works</summary>
           <ul>
             <li>12 PM is noon and 12 AM is midnight.</li>
+            <li>A dot or comma means decimal hours: 9.5 is 9:30 and 9.25 is 9:15. For clock minutes type 930 or 9:30.</li>
             <li>If the end time is earlier than the start, the shift runs past midnight into the next day.</li>
             <li>15-minute rounding uses the 7-minute rule: 9:07 rounds down to 9:00, 9:08 rounds up to 9:15.</li>
             <li>5-minute rounding: :01–:02 round down, :03–:04 round up. 6-minute (tenth of an hour): :01–:02 down, :03–:05 up.</li>
@@ -710,6 +753,25 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
       </div>
     </section>
   </div>
+  <section class="card glass week" aria-labelledby="weekTitle">
+    <div class="whead">
+      <span class="label" id="weekTitle">Weekly timesheet</span>
+      <button type="button" class="ghost" id="clearWeek">Clear week</button>
+    </div>
+    <div class="wlist">
+      <div class="wcols" aria-hidden="true"><span>Day</span><span>Start</span><span>End</span><span>Break</span><span>Hours</span></div>
+      <div id="wrows"></div>
+    </div>
+    <div class="wtotal">
+      <div>
+        <span class="label">Week total</span>
+        <div class="wbig"><span id="wDec">0.00</span><small>hrs</small></div>
+        <div class="wsub"><span id="wHm">0:00</span> <span id="wDays"></span></div>
+      </div>
+      <button type="button" class="copy" id="copyWeek" aria-label="Copy week total decimal hours">Copy</button>
+    </div>
+    <p class="wnote">Uses the clock format and rounding set above. Break is in minutes.</p>
+  </section>
   </main>
 </div>
 
@@ -721,7 +783,8 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
     start: { v: '900', ap: 'am' }, end: { v: '530', ap: 'pm' },
     br: [ { min: '30', s: { v: '1200', ap: 'pm' }, e: { v: '1230', ap: 'pm' } },
           { min: '', s: { v: '', ap: 'pm' }, e: { v: '', ap: 'pm' } },
-          { min: '', s: { v: '', ap: 'pm' }, e: { v: '', ap: 'pm' } } ]
+          { min: '', s: { v: '', ap: 'pm' }, e: { v: '', ap: 'pm' } } ],
+    week: Array.from({ length: 7 }, () => ({ s: { v: '', ap: 'am' }, e: { v: '', ap: 'pm' }, brk: '' }))
   };
   const KEY = 'shift-hours-v1';
   let S;
@@ -732,14 +795,21 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
     const str = v => (typeof v === 'string' || typeof v === 'number') ? String(v) : '';
     const obj = v => v && typeof v === 'object';
     const fld = (o, d) => obj(o) ? { v: str(o.v), ap: (o.ap === 'am' || o.ap === 'pm') ? o.ap : d.ap } : { v: d.v, ap: d.ap };
+    // state saved before decimal input (no week key) meant "9.30" as 9:30; keep that meaning by rewriting to "9:30"
+    if (!('week' in raw)) {
+      const mig = o => { if (!obj(o)) return; const c = str(o.v).trim().match(/^(\d{1,2})\s*[.,]\s*(\d{1,2})$/); if (c && +c[2] <= 59) o.v = c[1] + ':' + c[2].padStart(2, '0'); };
+      mig(raw.start); mig(raw.end);
+      if (Array.isArray(raw.br)) raw.br.forEach(b => { if (obj(b)) { mig(b.s); mig(b.e); } });
+    }
     const nb = raw.nBreaks === undefined ? D.nBreaks : Math.min(3, Math.max(0, Math.round(+raw.nBreaks) || 0));
-    const br = Array.isArray(raw.br) ? raw.br : [];
+    const br = Array.isArray(raw.br) ? raw.br : [], wk = Array.isArray(raw.week) ? raw.week : [];
     return {
       fmt: raw.fmt === '24' ? '24' : '12', nBreaks: nb, breakMode: raw.breakMode === 'time' ? 'time' : 'min',
       round: [0, 5, 6, 15].includes(+raw.round) ? +raw.round : 0,
       roundBreaks: (raw.roundBreaks === 0 || raw.roundBreaks === '0') ? 0 : 1,
       start: fld(raw.start, D.start), end: fld(raw.end, D.end),
-      br: D.br.map((d, i) => { const b = obj(br[i]) ? br[i] : {}; return { min: str(b.min), s: fld(b.s, d.s), e: fld(b.e, d.e) }; })
+      br: D.br.map((d, i) => { const b = obj(br[i]) ? br[i] : {}; return { min: str(b.min), s: fld(b.s, d.s), e: fld(b.e, d.e) }; }),
+      week: D.week.map((d, i) => { const w = obj(wk[i]) ? wk[i] : {}; return { s: obj(w.s) ? fld(w.s, d.s) : { ...d.s }, e: obj(w.e) ? fld(w.e, d.e) : { ...d.e }, brk: str(w.brk) }; })
     };
   }
   S = normalise(S);
@@ -750,21 +820,27 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
   const $ = id => document.getElementById(id);
 
   // ---- math ----
-  // Parse "915", "9:15", "1225", "9" -> {h, m}; null for blank; {err} for bad input.
+  // Parse "915", "9:15", "1225", "9" -> {h, m}; "9.5" or "9,5" is decimal hours -> 9:30 (dec: true).
+  // null for blank; {err} for bad input.
   function parse(raw, fmt) {
     const s = String(raw || '').trim();
     if (!s) return null;
-    let h, m;
-    const c = s.match(/^(\d{1,2})\s*[:.,]\s*(\d{1,2})$/);
+    let h, m, dec = false;
+    const c = s.match(/^(\d{1,2})\s*:\s*(\d{1,2})$/), d = s.match(/^(\d{0,2})[.,](\d{1,3})$/);
     if (c) { h = +c[1]; m = +c[2]; }
+    else if (d && (d[1] || d[2])) {
+      const t = Math.round((+(d[1] || 0) + +('0.' + d[2])) * 60);
+      h = Math.floor(t / 60); m = t % 60; dec = true;
+    }
+    else if (/^\d{1,2}[.,]$/.test(s)) { h = +s.slice(0, -1); m = 0; }
     else if (/^\d{1,4}$/.test(s)) {
       if (s.length <= 2) { h = +s; m = 0; }
       else { h = +s.slice(0, s.length - 2); m = +s.slice(-2); }
-    } else return { err: 'Use numbers like 915 or 9:15' };
+    } else return { err: 'Use numbers like 915, 9:15 or 9.25' };
     if (m > 59) return { err: 'Minutes go up to 59' };
     if (fmt === '12') { if (h < 1 || h > 12) return { err: 'Hours go from 1 to 12' }; }
     else if (h > 24 || (h === 24 && m > 0)) return { err: 'Hours go from 0 to 23' };
-    return { h, m };
+    return { h, m, dec };
   }
   // minute of day (0..1440)
   function toMin(p, ap, fmt) {
@@ -786,12 +862,14 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
   }
   const hhmm = t => Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
   const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+  const decNote = (v, p) => 'Read ' + String(v).trim() + ' as ' + p.h + ':' + String(p.m).padStart(2, '0');
 
   function compute() {
-    const fmt = S.fmt, out = { errs: {}, notes: [], breaks: [] };
+    const fmt = S.fmt, out = { errs: {}, notes: [], breaks: [], decs: [] };
     const read = (f, key) => {
       const p = parse(f.v, fmt);
       if (p && p.err) { out.errs[key] = p.err; return null; }
+      if (p && p.dec) out.decs.push(decNote(f.v, p));
       return p ? toMin(p, f.ap, fmt) : null;
     };
     let a = read(S.start, 'start'), b = read(S.end, 'end');
@@ -843,6 +921,34 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
     return out;
   }
 
+  // one timesheet day -> { total, decs, err, bad }; same rounding as the calculator
+  function computeDay(D) {
+    const fmt = S.fmt, r = { decs: [], bad: {} };
+    const fail = (k, msg) => { r.bad[k] = true; if (!r.err) r.err = msg; };
+    const rd = (f, k) => {
+      const p = parse(f.v, fmt);
+      if (p && p.err) { fail(k, p.err); return null; }
+      if (p && p.dec) r.decs.push(decNote(f.v, p));
+      return p ? toMin(p, f.ap, fmt) : null;
+    };
+    const a = rd(D.s, 's'), b = rd(D.e, 'e');
+    let brk = 0;
+    const bs = String(D.brk || '').trim();
+    if (bs) {
+      if (!/^\d{1,4}$/.test(bs)) fail('b', 'Break minutes must be a whole number');
+      else { brk = +bs; if (S.round && S.roundBreaks) brk = roundMin(brk, S.round); }
+    }
+    if (a == null || b == null || r.err) return r;
+    const ra = roundMin(a, S.round), rb = roundMin(b, S.round);
+    const gross = (rb === 1440 && ra === 0 && a !== b) ? 1440 : span(ra % 1440, rb % 1440);
+    if (brk > gross) { fail('b', 'Break is longer than the shift'); return r; }
+    r.total = gross - brk;
+    return r;
+  }
+  const narrow = matchMedia('(max-width: 640px)');
+  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const weekIds = i => ({ s: 'w' + i + 's', e: 'w' + i + 'e', b: 'w' + i + 'b' });
+
   // ---- UI building ----
   function timeField(f, id, label, descId) {
     const wrap = document.createElement('div');
@@ -872,8 +978,8 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
     $('startField').replaceWith(Object.assign(timeField(S.start, 'startIn', 'Start time', 'fieldErr'), { id: 'startField' }));
     $('endField').replaceWith(Object.assign(timeField(S.end, 'endIn', 'End time', 'fieldErr'), { id: 'endField' }));
     $('hint').innerHTML = S.fmt === '24'
-      ? 'Type <code>0915</code> or <code>1730</code>.'
-      : 'Type <code>915</code> for 9:15, or <code>9</code> for 9:00.';
+      ? 'Type <code>0915</code>, <code>1730</code>, or <code>17.5</code> for 17:30.'
+      : 'Type <code>915</code> for 9:15, <code>9</code> for 9:00, or <code>9.5</code> for 9:30.';
     const box = $('breaks'); box.innerHTML = '';
     if (!S.nBreaks) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'No breaks deducted.'; box.appendChild(p); }
     for (let i = 0; i < S.nBreaks; i++) {
@@ -906,10 +1012,63 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
     press('#roundSeg button', 'r', S.round);
     press('#roundBreakSeg button', 'rb', S.roundBreaks);
     $('breakMode').closest('.srow').hidden = !S.nBreaks;
-    $('roundBreakSeg').closest('.srow').hidden = !S.nBreaks || !S.round;
+    $('roundBreakSeg').closest('.srow').hidden = !S.round;
+    buildWeek();
     placePills();
     hourLabels();
     update();
+  }
+  function buildWeek() {
+    const box = $('wrows'); box.innerHTML = '';
+    const today = (new Date().getDay() + 6) % 7;
+    S.week.forEach((D, i) => {
+      const id = weekIds(i), row = document.createElement('div');
+      row.className = 'wrow' + (i === today ? ' today' : '');
+      const nm = document.createElement('span'); nm.className = 'wday'; nm.textContent = DAYS[i]; row.appendChild(nm);
+      const sf = timeField(D.s, id.s, DAYS[i] + ' start', 'wmsg' + i), ef = timeField(D.e, id.e, DAYS[i] + ' end', 'wmsg' + i);
+      sf.classList.add('ws'); ef.classList.add('we');
+      [sf, ef].forEach(f => {
+        f.querySelector('.tin').placeholder = '';
+        // on phones only the current AM/PM shows; tapping it flips to the other
+        const seg = f.querySelector('.seg.ap');
+        if (seg) seg.addEventListener('click', e => {
+          const b = e.target.closest('button');
+          if (!b || b.getAttribute('aria-pressed') !== 'true' || !narrow.matches) return;
+          e.stopPropagation(); [...seg.children].find(c => c !== b).click(); seg.querySelector('[aria-pressed="true"]').focus();
+        }, true);
+        row.appendChild(f);
+      });
+      const bw = document.createElement('div'); bw.className = 'wbrk';
+      const bi = document.createElement('input');
+      bi.className = 'tin'; bi.id = id.b; bi.type = 'text'; bi.inputMode = 'numeric'; bi.setAttribute('enterkeyhint', 'next');
+      bi.value = D.brk; bi.setAttribute('aria-label', DAYS[i] + ' break minutes'); bi.setAttribute('aria-describedby', 'wmsg' + i);
+      bi.addEventListener('input', () => { D.brk = bi.value; seen.delete(id.b); update(); });
+      bi.addEventListener('blur', () => { seen.add(id.b); update(); });
+      const u = document.createElement('span'); u.className = 'unit'; u.textContent = 'min';
+      bw.append(bi, u); row.appendChild(bw);
+      const h = document.createElement('div'); h.className = 'wh'; h.id = 'wh' + i; row.appendChild(h);
+      const m = document.createElement('p'); m.className = 'wmsg'; m.id = 'wmsg' + i; m.hidden = true; row.appendChild(m);
+      box.appendChild(row);
+    });
+  }
+  function renderWeek() {
+    let sum = 0, days = 0;
+    S.week.forEach((D, i) => {
+      const r = computeDay(D), id = weekIds(i);
+      // like the calculator, errors show once the field has lost focus
+      const vis = Object.keys(r.bad).filter(k => seen.has(id[k]));
+      ['s', 'e', 'b'].forEach(k => { const el = $(id[k]); if (!el) return; const bad = vis.includes(k); el.classList.toggle('bad', bad); if (bad) el.setAttribute('aria-invalid', 'true'); else el.removeAttribute('aria-invalid'); });
+      const h = $('wh' + i), m = $('wmsg' + i);
+      if (r.total != null) { sum += r.total; days++; h.className = 'wh'; h.innerHTML = '<b>' + (r.total / 60).toFixed(2) + '</b><span>' + hhmm(r.total) + '</span>'; }
+      else { h.className = 'wh none'; h.innerHTML = '<b>\u2014</b>'; }
+      const msg = vis.length ? r.err : r.decs.join(' \u00b7 ');
+      m.textContent = msg; m.hidden = !msg; m.classList.toggle('bad', !!vis.length);
+    });
+    $('wDec').textContent = (sum / 60).toFixed(2);
+    $('wHm').textContent = hhmm(sum);
+    $('wDays').textContent = days ? '\u00b7 ' + plural(days, 'day') : '';
+    $('copyWeek').disabled = !days;
+    return { sum, days };
   }
   function placePill(seg) {
     const b = seg.querySelector('button[aria-pressed="true"]');
@@ -954,7 +1113,7 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { clearInterval(nowT); flush(); } else { nowMark(); clearInterval(nowT); nowT = setInterval(nowMark, 30000); }
   });
-  const seen = new Set(['startIn', 'endIn', 'bmin0', 'bmin1', 'bmin2', 'bs0', 'bs1', 'bs2', 'be0', 'be1', 'be2']);
+  const seen = new Set(['startIn', 'endIn', 'bmin0', 'bmin1', 'bmin2', 'bs0', 'bs1', 'bs2', 'be0', 'be1', 'be2', ...[0, 1, 2, 3, 4, 5, 6].flatMap(i => Object.values(weekIds(i)))]);
   const idOf = k => k === 'start' ? 'startIn' : k === 'end' ? 'endIn' : /^b\d/.test(k) ? 'bmin' + k.slice(1) : k;
   let annT = 0;
   function announce(txt, now) { clearTimeout(annT); const go = () => { $('status').textContent = txt; }; if (now) go(); else annT = setTimeout(go, 700); }
@@ -962,6 +1121,7 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
   // ---- render ----
   function update() {
     save();
+    renderWeek();
     const r = compute();
     // errors show once a field has lost focus, not while it is being typed
     const vis = {};
@@ -987,6 +1147,7 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
     const badges = $('badges'); badges.innerHTML = '';
     const add = (txt, cls) => { const s = document.createElement('span'); s.className = 'badge ' + (cls || ''); s.textContent = txt; badges.appendChild(s); };
     [...new Set(Object.entries(vis).filter(([k]) => k !== 'start' && k !== 'end').map(([, v]) => v))].forEach(e => add(e, 'err'));
+    r.decs.forEach(n => add(n, 'b'));
     if (r.total != null) {
       if (r.overnight) add('Ends next day');
       r.notes.forEach(n => add(n, 'b'));
@@ -1020,7 +1181,7 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
   }
   document.querySelectorAll('[data-fmt]').forEach(b => b.addEventListener('click', () => {
     const to = b.dataset.fmt; if (to === S.fmt) return;
-    [S.start, S.end, ...S.br.flatMap(x => [x.s, x.e])].forEach(f => convertField(f, S.fmt, to));
+    [S.start, S.end, ...S.br.flatMap(x => [x.s, x.e]), ...S.week.flatMap(x => [x.s, x.e])].forEach(f => convertField(f, S.fmt, to));
     S.fmt = to; build();
   }));
   $('breakCount').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.nBreaks = +b.dataset.n; build(); } });
@@ -1028,12 +1189,22 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
   $('roundSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.round = +b.dataset.r; build(); } });
   $('roundBreakSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.roundBreaks = +b.dataset.rb; build(); } });
   $('form').addEventListener('submit', e => e.preventDefault());
-  // Enter jumps to the next box
-  $('form').addEventListener('keydown', e => {
+  // Enter jumps to the next box, within the calculator or within the week
+  const nextOnEnter = e => {
     if (e.key !== 'Enter' || !e.target.classList.contains('tin')) return;
     e.preventDefault();
-    const all = [...document.querySelectorAll('.tin')], i = all.indexOf(e.target);
+    const all = [...e.currentTarget.querySelectorAll('.tin')], i = all.indexOf(e.target);
     if (all[i + 1]) all[i + 1].focus(); else e.target.blur();
+  };
+  $('form').addEventListener('keydown', nextOnEnter);
+  $('wrows').addEventListener('keydown', nextOnEnter);
+  // two taps so a stray tap can't wipe the week
+  $('clearWeek').addEventListener('click', () => {
+    const b = $('clearWeek');
+    if (!b.dataset.arm) { b.dataset.arm = '1'; b.textContent = 'Tap again to clear'; clearTimeout(b._t); b._t = setTimeout(() => { delete b.dataset.arm; b.textContent = 'Clear week'; }, 3000); return; }
+    clearTimeout(b._t); delete b.dataset.arm; b.textContent = 'Clear week';
+    S.week.forEach(D => { D.s.v = ''; D.e.v = ''; D.s.ap = 'am'; D.e.ap = 'pm'; D.brk = ''; });
+    build();
   });
   $('clear').addEventListener('click', () => {
     S.start.v = ''; S.end.v = ''; S.start.ap = 'am'; S.end.ap = 'pm';
@@ -1070,9 +1241,9 @@ html body .ghost { min-height: 32px; padding: 4px 14px; font-size: 13.5px; }
     });
   }
   function selectText(id) { const r = document.createRange(); r.selectNodeContents($(id)); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
-  copier('copyDec', 'dec'); copier('copyHm', 'hm2');
+  copier('copyDec', 'dec'); copier('copyHm', 'hm2'); copier('copyWeek', 'wDec');
 
-  window.__hours = { parse, toMin, roundMin, span, compute, get S() { return S; } };
+  window.__hours = { parse, toMin, roundMin, span, compute, computeDay, renderWeek, normalise, get S() { return S; } };
   try { build(); } catch (e) { try { localStorage.removeItem(KEY); } catch (e2) {} S = normalise(null); build(); }
 })();
 </script>
