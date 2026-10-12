@@ -1,6 +1,6 @@
 # HANDOFF: Shift Hours
 
-Last updated: 2026-10-11 (audit fixes)
+Last updated: 2026-10-12 (space pass: less scrolling)
 
 ## What it is
 
@@ -18,6 +18,7 @@ A single-file shift hours calculator (`index.html`, no build step) served by Git
 - **24:00:** valid only in 24-hour mode. Switching to 12-hour leaves `2400` as typed and flags it; switching back restores it.
 - Audit of 2026-10-11 (`fix/audit-2026-10-11`): all 3 Mediums fixed; Lows fixed except 15 and 19 (see open decisions), and 4 is only labelled.
 - **Visitor counter (2026-10-11):** Cloudflare Web Analytics beacon at the end of `index.html`. It is cookieless. Set up in Cloudflare under Observability > Web Analytics with "Enable with JS Snippet installation". DNS is on Cloudflare but not proxied (A records point straight at GitHub Pages), so automatic injection does not apply and the manual snippet is needed.
+- **Space pass (2026-10-12):** a 10-lead swarm cut wasted space. Phone page went from about 1950px to 1160px; the result shows right under Start/End. Changes: header on one row on phones (subtitle and the word "Calculator" hidden there); typing hint shows only while a time box is focused (also in How it works); on phones the order is Start/End card, result card, then a Breaks + Settings card (desktop keeps them on the left); stats box removed, h:mm line under the decimal with total minutes and break minutes; Clear sits beside the result title (old foot strip and its note removed); "No breaks deducted" placeholder removed; Settings is a `<details id="settingsDisc">` row showing the current rounding, opened by JS on desktop; "Round breaks too" only shows when there are breaks; week rows are one line per day on phones (AM/PM is a narrow tap-to-flip chip, break word hidden); week total slimmer, week footnote moved into How it works; seg buttons 40px tall on phones; Copy buttons have a larger invisible tap area. The result card is no longer sticky on desktop (it is now shorter than the left column, and a moving blurred card flickered while scrolling).
 
 ## Next steps
 
@@ -33,6 +34,8 @@ A single-file shift hours calculator (`index.html`, no build step) served by Git
 - Decimal entries round to the nearest minute (16.01 is 16:01); the note says "(nearest minute)" when that happens.
 
 ## Gotchas
+
+- **Layout markup (2026-10-12):** `<form id="form">` is now the `.grid` wrapper holding `.col-in` (entry card + options card) and the result section. On phones `.col-in` is `display: contents` and the cards are reordered with `order`. `#dec` stays as a hidden span because the decimal copier reads it; `#mins` and `#brk` live in `.hmline`. The space-pass CSS block sits at the end of the main stylesheet; the week one-line rules include `.card.week` to beat the earlier 640px rules.
 
 - **The decimal change alters old behaviour.** Before, `9.30` meant 9:30. It now means 9:18. The iOS decimal keypad has no colon, so phone users who typed `9.30` for 9:30 now need `930`. The badge and the hint text explain this.
 - Saved state from before decimal input has no `week` key. On first load, `normalise()` rewrites its dotted times to colon form (`9.30` becomes `9:30`), so old saves keep their meaning. The rewrite runs only once, because the next save adds `week`.

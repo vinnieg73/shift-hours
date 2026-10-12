@@ -613,6 +613,96 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
   html body .wrow .seg.ap button[aria-pressed="false"] { display: none; }
   html body .wrow .seg.ap button { width: 42px; min-width: 0; border-radius: 9px; background: var(--thumb); box-shadow: var(--thumb-shadow); }
 }
+
+/* ==== space pass (2026-10-12 swarm): less scrolling, no repeats ==== */
+/* the result card no longer sticks while scrolling: it is now shorter than the left column, and a moving blurred glass card flickers */
+html body .card.result { position: static; }
+/* layout: left column = entry card + options card, right = result */
+html body .col-in { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+html body .options > .section:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+html body .section { margin-top: 10px; padding-top: 10px; }
+/* result header: label + Clear on one line (the old foot is gone) */
+html body .rhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+html body .rhead .label { margin: 0; }
+html body .rhead .ghost { min-height: 30px; padding: 3px 14px; font-size: 13.5px; }
+/* h:mm line straight under the decimal, with total minutes and breaks beside it */
+html body .hmline { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 0 2px 0 4px; min-width: 0; }
+html body .hmline .hm2 { font-family: var(--font-r); font-size: 22px; font-weight: 700; line-height: 1; color: var(--label); font-variant-numeric: tabular-nums; }
+html body .hmline .hmu { font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--label2); }
+html body .hmline .mx { font-size: 13.5px; color: var(--label2); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+html body .hmline .mx::before { content: "·"; margin: 0 6px 0 2px; color: var(--label3); }
+html body .hmline .brkx { color: var(--brk-text, var(--label2)); }
+html body .hmline .copy { margin-left: auto; flex: none; }
+html body .words { margin-top: 6px; }
+html body .words:empty { display: none; }
+html body .badges:empty { margin-top: 0; }
+/* bigger invisible tap area on Copy without taller rows */
+html body .copy { position: relative; }
+html body .copy::after { content: ""; position: absolute; inset: -6px -2px; }
+/* settings: one disclosure row that shows the current rounding */
+html body .sdisc > summary { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; list-style: none; cursor: pointer; }
+html body .sdisc > summary::-webkit-details-marker { display: none; }
+html body .sdisc > summary .label { margin: 0; }
+html body .sdisc .sval { margin-left: auto; font-size: 14px; color: var(--label2); }
+html body .sdisc .sval.on { color: var(--accent-text); font-weight: 600; }
+html body .sdisc > summary::after { content: ""; width: 7px; height: 7px; border-right: 2px solid var(--label3); border-bottom: 2px solid var(--label3); transform: rotate(45deg); margin: 0 4px 4px 2px; transition: transform .2s; }
+html body .sdisc[open] > summary::after { transform: rotate(-135deg); margin-bottom: -2px; }
+html body .sdisc[open] > summary { box-shadow: inset 0 -.5px 0 var(--sep); }
+html body .settings { margin-top: 0; }
+/* week: total tighter, caption for screen readers only */
+html body .wtotal { margin-top: 8px; padding: 8px 12px 8px 14px; }
+html body .wbig { line-height: 1; }
+html body .wsub { margin-top: 2px; }
+@media (min-width: 761px) {
+  html body .wtotal > div { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 12px; }
+  html body .wtotal .wsub { margin-top: 0; }
+}
+@media (max-width: 760px) {
+  html body .col-in { display: contents; }
+  html body .entry { order: 0; }
+  html body .card.result { order: 1; }
+  html body .options { order: 2; }
+  html body .card { padding: 12px 14px; }
+  /* typing hint only while a time box is focused; the same tips live in How it works */
+  html body .hint { display: none; }
+  html body .times:focus-within ~ .hint { display: block; }
+  /* tap targets to 40px */
+  html body .seg button { min-height: 40px; }
+  html body .rhead .ghost { min-height: 36px; margin-block: -6px; }
+  /* dial a bit smaller, key rows to match */
+  html body .dialwrap { margin-top: 8px; }
+  html body .dialwrap svg { width: 116px; height: 116px; }
+  html body .legend > div { min-height: 25px; }
+  html body .legend { flex: 1 1 120px; }
+  html body .dialwrap .dcap { display: none; }
+}
+@media (max-width: 560px) {
+  /* header on one row: logo + name left, 12h/24h switch right */
+  html body header { flex-wrap: nowrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+  html body .brand { flex: 1 1 auto; min-width: 0; }
+  html body .sub { display: none; }
+  html body h1 { white-space: nowrap; }
+  html body h1 span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  html body .fmtbox { width: auto; flex: none; gap: 0; padding: 2px; }
+  html body .fmtbox .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  html body .fmtbox .seg { flex: none; }
+  html body .fmtbox .seg button { flex: none; min-width: 52px; min-height: 40px; padding: 0 8px; }
+}
+@media (max-width: 640px) {
+  /* one line per weekday: day | start | end | break | hours */
+  html body .card.week .wrow { grid-template-columns: 30px minmax(0,1fr) minmax(0,1fr) 44px 46px; grid-template-areas: "day s e b h" "msg msg msg msg msg"; column-gap: 5px; row-gap: 0; padding: 6px 10px 6px 12px; }
+  html body .card.week .wrow .tfield { gap: 3px; }
+  html body .card.week .wrow .tin { height: 40px; font-size: 16px; padding: 0 3px; border-radius: 10px; text-align: center; }
+  html body .card.week .wrow .seg.ap { height: 40px; border-radius: 10px; }
+  html body .card.week .wrow .seg.ap button { width: 28px; min-width: 0; font-size: 12px; border-radius: 8px; }
+  html body .card.week .wrow .wbrk { justify-self: stretch; gap: 0; }
+  html body .card.week .wrow .wbrk .tin { width: 100%; padding: 0 2px; text-align: center; }
+  html body .card.week .wrow .wbrk .unit { display: none; }
+  html body .card.week .wrow .wh { justify-content: center; }
+  html body .card.week .wrow .wh b { font-size: 15px; }
+  html body .card.week .wday { font-size: 13px; }
+}
+
 </style>
 
 
@@ -664,8 +754,9 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
   </header>
 
   <main>
-  <div class="grid">
-    <form class="card glass" id="form" autocomplete="off" novalidate>
+  <form class="grid" id="form" autocomplete="off" novalidate>
+    <div class="col-in">
+    <div class="card glass entry">
       <div class="times">
         <div class="trow"><label class="label" for="startIn">Start</label><div class="tfield" id="startField"></div></div>
         <div class="trow"><label class="label" for="endIn">End</label><div class="tfield" id="endField"></div></div>
@@ -673,7 +764,9 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       <p class="hint" id="hint">Type <code>915</code> for 9:15, <code>9</code> for 9:00, or <code>9.5</code> for 9:30.</p>
 
       <p class="fielderr" id="fieldErr" role="status" hidden></p>
+    </div>
 
+    <div class="card glass options">
       <div class="section">
         <div class="srow">
           <span class="label">Breaks</span>
@@ -685,8 +778,8 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       </div>
 
       <div class="section">
-        <span class="label">Settings</span>
-        <div class="settings">
+        <details class="settings sdisc" id="settingsDisc">
+          <summary><span class="label">Settings</span><span class="sval" id="roundVal">Rounding off</span></summary>
           <div class="srow"><span>Enter breaks as</span>
             <div class="seg" role="group" aria-label="Enter breaks as" id="breakMode">
               <button type="button" data-m="min">Minutes</button><button type="button" data-m="time">Start &amp; end</button>
@@ -708,25 +801,23 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
             <li>15-minute rounding uses the 7-minute rule: 9:07 rounds down to 9:00, 9:08 rounds up to 9:15.</li>
             <li>5-minute rounding: :01–:02 round down, :03–:04 round up. 6-minute (tenth of an hour): :01–:02 down, :03–:05 up.</li>
             <li>Decimal hours = minutes ÷ 60. For example 7:15 is 7.25 hours.</li>
+            <li>Typing tips: <span id="helpTip"></span></li>
+            <li>The weekly timesheet uses the same clock format and rounding as above. Break is in minutes.</li>
           </ul>
         </details>
-          </div>
+        </details>
       </div>
-
-    </form>
+    </div>
+    </div>
 
     <section class="card glass result" aria-label="Result">
       <div class="sr" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
-      <span class="label">Decimal hours worked</span>
+      <div class="rhead"><span class="label">Decimal hours worked</span><button type="button" class="ghost" id="clear">Clear</button></div>
       <div class="big"><div class="hm" id="hm">0.00</div><button type="button" class="copy hero-copy" id="copyDec" aria-label="Copy decimal hours">Copy</button></div>
+      <div class="hmline"><span class="hm2" id="hm2">0:00</span><span class="hmu">h:mm</span><span class="mx"><span id="mins">0</span> min<span class="brkx" id="brk"></span></span><button type="button" class="copy" id="copyHm" aria-label="Copy hours and minutes">Copy</button></div>
+      <span id="dec" hidden>0.00</span>
       <p class="words" id="words"></p>
       <div class="badges" id="badges"></div>
-      <div class="stats">
-        <div class="stat" hidden><span class="k">Decimal hours</span><span class="v"><span id="dec">0.00</span></span></div>
-        <div class="stat"><span class="k">Hours : minutes</span><span class="v"><span id="hm2">0:00</span><button type="button" class="copy" id="copyHm" aria-label="Copy hours and minutes">Copy</button></span></div>
-        <div class="stat"><span class="k">Total minutes</span><span class="v" id="mins">0</span></div>
-        <div class="stat"><span class="k">Breaks deducted</span><span class="v brk" id="brk">0 min</span></div>
-      </div>
       <div class="dialwrap">
         <svg id="dial" viewBox="0 0 200 200" role="img" aria-label="24-hour dial of the shift">
           <defs><filter id="arcBlur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"></feGaussianBlur></filter><linearGradient id="arcGrad" gradientUnits="userSpaceOnUse" x1="30" y1="30" x2="170" y2="170"><stop offset="0" stop-color="var(--accent-hi)"></stop><stop offset="1" stop-color="var(--accent)"></stop></linearGradient></defs>
@@ -739,22 +830,18 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
           <g id="arcDots"></g>
           <g id="hlabels"></g>
           <g id="nowMark" visibility="hidden"><circle r="5" fill="var(--label)" stroke="var(--bg)" stroke-width="2.5"></circle></g>
-          <text x="100" y="92" text-anchor="middle" font-family="var(--f-num)" font-size="11" font-weight="600" letter-spacing=".6" fill="var(--label2)">ON SITE</text>
+          <text class="dcap" x="100" y="92" text-anchor="middle" font-family="var(--f-num)" font-size="11" font-weight="600" letter-spacing=".6" fill="var(--label2)">ON SITE</text>
           <text x="100" y="116" text-anchor="middle" font-family="var(--f-num)" font-weight="700" font-size="25" fill="var(--label)" id="dialSpan"></text>
         </svg>
         <div class="legend">
           <div><i style="background:linear-gradient(90deg,var(--accent-hi),var(--accent))"></i>On the clock</div>
-          <div><i class="brk"></i>Breaks</div>
+          <div id="legBrk"><i class="brk"></i>Breaks</div>
           <div><i class="now"></i>Now</div>
           <div class="span" id="spanText"></div>
         </div>
       </div>
-      <div class="foot">
-        <span class="unit" id="note"></span>
-        <button type="button" class="ghost" id="clear">Clear</button>
-      </div>
     </section>
-  </div>
+  </form>
   <section class="card glass week" aria-labelledby="weekTitle">
     <div class="whead">
       <span class="label" id="weekTitle">Weekly timesheet</span>
@@ -766,14 +853,13 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     </div>
     <div class="wtotal">
       <div>
-        <span class="label">Week total</span>
+        <span class="sr">Week total</span>
         <div class="wbig"><span id="wDec">0.00</span><small>hrs</small></div>
         <div class="wsub"><span id="wHm">0:00</span> <span id="wDays"></span></div>
       </div>
       <button type="button" class="copy" id="copyWeek" aria-label="Copy week total decimal hours">Copy</button>
     </div>
     <p class="wwarn" id="wWarn" role="status" hidden></p>
-    <p class="wnote">Uses the clock format and rounding set above. Break is in minutes.</p>
   </section>
   </main>
 </div>
@@ -1031,8 +1117,9 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     $('hint').innerHTML = S.fmt === '24'
       ? 'Type <code>0915</code>, <code>1730</code>, or <code>17.5</code> for 17:30.'
       : 'Type <code>915</code> for 9:15, <code>9</code> for 9:00, or <code>9.5</code> for 9:30.';
+    $('helpTip').innerHTML = $('hint').innerHTML;
+    { const rv = $('roundVal'); rv.textContent = S.round ? 'Rounding ' + S.round + ' min' : 'Rounding off'; rv.classList.toggle('on', !!S.round); }
     const box = $('breaks'); box.innerHTML = '';
-    if (!S.nBreaks) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'No breaks deducted.'; box.appendChild(p); }
     for (let i = 0; i < S.nBreaks; i++) {
       const B = S.br[i], row = document.createElement('div');
       row.className = 'brow' + (S.breakMode === 'time' ? ' span2' : '');
@@ -1063,7 +1150,7 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     press('#roundSeg button', 'r', S.round);
     press('#roundBreakSeg button', 'rb', S.roundBreaks);
     $('breakMode').closest('.srow').hidden = !S.nBreaks;
-    $('roundBreakSeg').closest('.srow').hidden = !S.round;
+    $('roundBreakSeg').closest('.srow').hidden = !S.round || !S.nBreaks;
     buildWeek();
     placePills();
     hourLabels();
@@ -1228,8 +1315,9 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
     $('hm2').textContent = ok ? hhmm(t) : '—';
     $('dec').textContent = ok ? (t / 60).toFixed(2) : '—';
     $('mins').textContent = ok ? t.toLocaleString() : '—';
-    $('brk').textContent = r.brk != null ? plural(r.brk, 'min').replace('mins', 'min') : '—';
-    if (ok) $('words').innerHTML = '<b>' + plural(Math.floor(t / 60), 'hour') + '</b>, <b>' + plural(t % 60, 'minute') + '</b>'; else $('words').textContent = (r.total == null && !r.block && !errs.length ? 'Enter a start and end time.' : '');
+    $('brk').textContent = ok && r.brk ? ' · −' + r.brk + ' min' : '';
+    $('legBrk').hidden = !(r.a != null && r.breaks && r.breaks.length);
+    if (ok) $('words').textContent = ''; else $('words').textContent = (r.total == null && !r.block && !errs.length ? 'Enter a start and end time.' : '');
     const badges = $('badges'); badges.innerHTML = '';
     const add = (txt, cls) => { const s = document.createElement('span'); s.className = 'badge ' + (cls || ''); s.textContent = txt; badges.appendChild(s); };
     // break field errors show under their own row; the badge says the total is paused and why
@@ -1252,10 +1340,9 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
       $('dialSpan').textContent = hhmm(r.gross);
       $('dial').setAttribute('aria-label', '24-hour dial: ' + clock(r.a, S.fmt) + ' to ' + endClock(r.b, S.fmt, r.full) + ', ' + hhmm(r.gross) + ' on site' + (r.breaks.length ? ', ' + plural(r.breaks.length, 'break') + ' shown' : ''));
       $('spanText').textContent = clock(r.a, S.fmt) + ' → ' + endClock(r.b, S.fmt, r.full);
-      $('note').textContent = r.block ? '' : r.brk ? hhmm(r.gross) + ' on site, minus ' + plural(r.brk, 'min').replace('mins', 'min') + ' of breaks' : 'No breaks deducted';
     } else {
       $('arc').setAttribute('d', ''); $('arcGlow').setAttribute('d', ''); $('arcBreaks').innerHTML = ''; $('arcDots').innerHTML = ''; nowMark();
-      $('dial').setAttribute('aria-label', '24-hour dial of the shift'); $('dialSpan').textContent = ''; $('spanText').textContent = ''; $('note').textContent = '';
+      $('dial').setAttribute('aria-label', '24-hour dial of the shift'); $('dialSpan').textContent = ''; $('spanText').textContent = '';
     }
   }
 
@@ -1292,6 +1379,7 @@ html body .wrow .seg.ap button { width: 34px; font-size: 12px; border-radius: 7p
   $('roundSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.round = +b.dataset.r; build(); } });
   $('roundBreakSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.roundBreaks = +b.dataset.rb; build(); } });
   $('form').addEventListener('submit', e => e.preventDefault());
+  try { if (matchMedia('(min-width: 761px)').matches) $('settingsDisc').open = true; } catch (e) {}
   // Enter jumps to the next box, within the calculator or within the week
   const nextOnEnter = e => {
     if (e.key !== 'Enter' || !e.target.classList.contains('tin')) return;
