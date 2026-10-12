@@ -703,6 +703,9 @@ html body .wsub { margin-top: 2px; }
   html body .card.week .wday { font-size: 13px; }
 }
 
+/* no live blur: the page behind every card is plain near-black, so backdrop blur drew nothing visible,
+   and Safari repaints blurred layers (and blurred pills inside them) while scrolling, which flickered */
+html body .glass, html body .glass-clear, html body .seg.ap::before, html body .seg.slide:not(.ap)::before { -webkit-backdrop-filter: none; backdrop-filter: none; }
 </style>
 
 
