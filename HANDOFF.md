@@ -1,6 +1,6 @@
 # HANDOFF: Shift Hours
 
-Last updated: 2026-10-12 (space pass: less scrolling)
+Last updated: 2026-10-14 (phone spacing touch-up)
 
 ## What it is
 
@@ -19,6 +19,7 @@ A single-file shift hours calculator (`index.html`, no build step) served by Git
 - Audit of 2026-10-11 (`fix/audit-2026-10-11`): all 3 Mediums fixed; Lows fixed except 15 and 19 (see open decisions), and 4 is only labelled.
 - **Visitor counter (2026-10-11):** Cloudflare Web Analytics beacon at the end of `index.html`. It is cookieless. Set up in Cloudflare under Observability > Web Analytics with "Enable with JS Snippet installation". DNS is on Cloudflare but not proxied (A records point straight at GitHub Pages), so automatic injection does not apply and the manual snippet is needed.
 - **Space pass (2026-10-12):** a 10-lead swarm cut wasted space. Phone page went from about 1950px to 1160px; the result shows right under Start/End. Changes: header on one row on phones (subtitle and the word "Calculator" hidden there); typing hint shows only while a time box is focused (also in How it works); on phones the order is Start/End card, result card, then a Breaks + Settings card (desktop keeps them on the left); stats box removed, h:mm line under the decimal with total minutes and break minutes; Clear sits beside the result title (old foot strip and its note removed); "No breaks deducted" placeholder removed; Settings is a `<details id="settingsDisc">` row showing the current rounding, opened by JS on desktop; "Round breaks too" only shows when there are breaks; week rows are one line per day on phones (AM/PM is a narrow tap-to-flip chip, break word hidden); week total slimmer, week footnote moved into How it works; seg buttons 40px tall on phones; Copy buttons have a larger invisible tap area. The result card is no longer sticky on desktop. Backdrop blur is turned off on all glass cards and pills (the page behind is plain near-black, so it drew nothing visible, and it flickered in Safari while scrolling).
+- **Phone spacing touch-up (2026-10-14):** Clear and Clear week are the same 34px pill with a 10px gap under the card header, so they no longer touch the box below. The h:mm line uses the decimal box's insets (14px left, 12px right), so both numbers and both Copy buttons line up (all widths). The divider line between Breaks and the Settings box is gone on phones, and the Breaks label is centred on its switch. CSS block "phone spacing touch-up" sits just above the no-blur rules.
 
 ## Next steps
 

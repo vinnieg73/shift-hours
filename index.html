@@ -703,6 +703,20 @@ html body .wsub { margin-top: 2px; }
   html body .card.week .wday { font-size: 13px; }
 }
 
+/* ==== phone spacing touch-up (2026-10-14) ==== */
+@media (max-width: 760px) {
+  /* card headers: Clear / Clear week are the same slim pill and no longer touch the box under them */
+  html body .rhead, html body .whead { min-height: 34px; margin-bottom: 10px; }
+  html body .rhead .ghost, html body .whead .ghost { position: relative; min-height: 34px; margin-block: 0; padding: 0 14px; font-size: 14px; }
+  html body .rhead .ghost::after, html body .whead .ghost::after { content: ""; position: absolute; inset: -5px -2px; }
+  html body .rhead + .big { margin-top: 0; }
+  /* Breaks + Settings: the Settings box already separates them, so no extra line; label centred on the switch */
+  html body .options > .section + .section { border-top: 0; margin-top: 12px; padding-top: 0; }
+  html body .options .section > .srow > .label { margin: 0; }
+}
+/* h:mm line uses the same left and right insets as the decimal box, so both numbers and both Copy buttons line up */
+html body .hmline { padding: 0 12px 0 14px; }
+
 /* no live blur: the page behind every card is plain near-black, so backdrop blur drew nothing visible,
    and Safari repaints blurred layers (and blurred pills inside them) while scrolling, which flickered */
 html body .glass, html body .glass-clear, html body .seg.ap::before, html body .seg.slide:not(.ap)::before { -webkit-backdrop-filter: none; backdrop-filter: none; }
