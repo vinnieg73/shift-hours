@@ -717,6 +717,136 @@ html body .wsub { margin-top: 2px; }
 /* h:mm line uses the same left and right insets as the decimal box, so both numbers and both Copy buttons line up */
 html body .hmline { padding: 0 12px 0 14px; }
 
+/* ==== per diem view (2026-10-16). Everything is scoped to .viewbar, #pdView or body[data-view], so the Hours view is untouched ==== */
+.viewbar { display: flex; align-items: center; gap: 10px; margin: -12px 0 14px; }
+.viewbar .seg { flex: none; }
+.viewbar .seg button { min-width: 120px; font-size: 14.5px; }
+@media (max-width: 560px) { .viewbar { margin-top: -10px; } .viewbar .seg { flex: 1; } .viewbar .seg button { flex: 1; min-width: 0; } }
+body[data-view="pd"] .fmtbox { visibility: hidden; }
+@media (max-width: 560px) { body[data-view="pd"] .fmtbox { display: none; } }
+
+#pdView .label, #pdView .whead .label em, #pdView .copy { font-size: 13px; }
+#pdView .sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+#pdView .pdgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); grid-template-areas: "trip res" "trip2 res"; grid-template-rows: auto 1fr; gap: 12px; align-items: start; }
+#pdView .pdgrid > .trip { grid-area: trip; } #pdView .pdgrid > .result { grid-area: res; } #pdView .pdgrid > .trip2 { grid-area: trip2; margin-top: 0 !important; }
+@media (max-width: 760px) { #pdView .pdgrid { grid-template-columns: minmax(0,1fr); grid-template-areas: "trip" "res" "trip2"; grid-template-rows: none; gap: 10px; } }
+#pdView .trip { position: relative; z-index: 5; }
+#pdView .trip .rhead .label { margin: 0; }
+#pdView .qwrap { position: relative; margin-top: 8px; }
+#pdView .pick { appearance: none; -webkit-appearance: none; width: 100%; min-width: 0; height: 48px; border: 0; border-radius: 14px; padding: 0 14px; font: inherit; font-family: var(--font-r); font-size: 17px; font-weight: 600; color: var(--label); background: var(--field); box-shadow: inset 0 0 0 1px var(--field-edge); color-scheme: dark; font-variant-numeric: tabular-nums; }
+#pdView .pick.q { height: 54px; font-size: 20px; padding-left: 44px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23ffc060' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='8.5' cy='8.5' r='6'/%3E%3Cpath d='M13 13l5 5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 15px center; background-size: 18px; }
+#pdView .pick.q::-webkit-search-cancel-button { filter: invert(.7); }
+#pdView .pick::placeholder { color: var(--label3); font-weight: 500; }
+#pdView input.pick::-webkit-calendar-picker-indicator { filter: invert(.75) sepia(1) saturate(4) hue-rotate(-12deg); cursor: pointer; }
+#pdView input.pick[type="date"] { display: flex; align-items: center; }
+#pdView input.pick::-webkit-date-and-time-value { text-align: left; }
+#pdView .pick:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
+#pdView .pick.bad { background-color: var(--bad-fill); color: var(--bad); box-shadow: inset 0 0 0 2px var(--bad); }
+#pdView .sug { position: absolute; left: 0; right: 0; top: calc(100% + 6px); margin: 0; padding: 6px; list-style: none; border-radius: 16px; background: #1b1d29; box-shadow: 0 0 0 .5px rgba(255,255,255,.18), 0 18px 40px -8px rgba(0,0,0,.8); max-height: 340px; overflow: auto; overscroll-behavior: contain; }
+#pdView .sug li { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 11px; cursor: pointer; }
+#pdView .sug li b { font-weight: 600; color: var(--label); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#pdView .sug li span { flex: none; font-size: 13px; color: var(--label3); white-space: nowrap; font-variant-numeric: tabular-nums; max-width: 48%; overflow: hidden; text-overflow: ellipsis; }
+#pdView .sug li[aria-selected="true"], #pdView .sug li:hover { background: var(--fill); }
+#pdView .sug li.std b { color: var(--label2); font-weight: 500; }
+#pdView .sug li.info { cursor: default; color: var(--label3); font-size: 13px; }
+#pdView .sug li.info:hover { background: none; }
+#pdView .fy { font-size: 13px; font-weight: 700; letter-spacing: .03em; color: var(--accent-text); background: var(--accent-soft); padding: 3px 10px; border-radius: 999px; }
+#pdView .pdempty { margin: 4px 2px 6px; font-size: 15px; line-height: 1.4; color: var(--label2); }
+#pdView .pdempty.err { color: var(--bad); }
+#pdView .pdempty button { font: inherit; font-weight: 600; border: 0; border-radius: 999px; padding: 6px 14px; margin-top: 10px; background: var(--fill); color: var(--label); cursor: pointer; display: block; }
+#pdView .pdempty a { color: var(--accent-text); }
+#pdView .place { display: flex; flex-direction: column; gap: 2px; margin: 4px 2px 10px; min-width: 0; }
+#pdView .place b { font-family: var(--font-d); font-size: 22px; font-weight: 700; letter-spacing: -.01em; color: var(--label); line-height: 1.2; text-wrap: balance; overflow-wrap: anywhere; }
+#pdView .place span { font-size: 13px; line-height: 1.35; color: var(--label3); overflow-wrap: anywhere; }
+#pdView .choices { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; }
+#pdView .choices p { margin: 0 2px 2px; font-size: 13px; line-height: 1.35; color: var(--label2); }
+#pdView .choices a { color: var(--accent-text); }
+#pdView .choice { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; width: 100%; text-align: left; font: inherit; border: 0; border-radius: 13px; padding: 9px 12px; cursor: pointer; background: var(--fill); color: var(--label); box-shadow: inset 0 0 0 1px transparent; }
+#pdView .choice b { font-size: 15px; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+#pdView .choice small { grid-column: 1; font-size: 13px; color: var(--label3); line-height: 1.3; overflow-wrap: anywhere; }
+#pdView .choice span { grid-row: 1 / span 2; grid-column: 2; font-family: var(--font-r); font-size: 14px; font-weight: 600; color: var(--label2); white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+#pdView .choice[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+#pdView .choice[aria-pressed="true"] span { color: var(--accent-text); }
+#pdView .choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#pdView .big.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 0; margin-top: 0; }
+#pdView .big.two .stat { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 2px; padding: 10px 14px; min-width: 0; min-height: 0; border-bottom: 0; }
+#pdView .big.two .stat + .stat { box-shadow: inset .5px 0 0 var(--sep); }
+#pdView .big.two .k { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--label2); }
+#pdView .big.two .u { font-size: 13px; color: var(--label3); }
+#pdView .big.two .hm { font-size: 38px; }
+#pdView .big .hm .cur { font-size: .6em; font-weight: 600; color: var(--label2); margin-right: 2px; vertical-align: .32em; }
+#pdView .big .hm .cts { font-size: .55em; color: var(--label2); }
+#pdView .big .hm.err { color: var(--label3); }
+#pdView .sub2 { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 14px 2px 6px; }
+#pdView .sub2 .label { margin: 0; }
+#pdView .sub2 .note { font-size: 13px; color: var(--label3); }
+#pdView .months { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); border-radius: 12px; overflow: hidden; background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.12); }
+#pdView .mo { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 7px 2px; font-variant-numeric: tabular-nums; position: relative; min-width: 0; }
+#pdView .mo:nth-child(n+7) { box-shadow: inset 0 .5px 0 var(--sep); }
+#pdView .mo span { font-size: 13px; font-weight: 600; color: var(--label3); text-transform: uppercase; letter-spacing: .02em; }
+#pdView .mo b { font-family: var(--font-r); font-size: 16px; font-weight: 700; color: var(--label); }
+#pdView .mo.lo b { color: var(--label2); font-weight: 600; }
+#pdView .mo.now { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 10px; }
+#pdView .mo.now span { color: var(--accent-text); }
+#pdView .mie { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); border-radius: 12px; overflow: hidden; background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.12); }
+#pdView .mie div { display: flex; flex-direction: column; align-items: center; padding: 7px 2px; font-variant-numeric: tabular-nums; min-width: 0; }
+#pdView .mie dt { font-size: 13px; font-weight: 600; color: var(--label3); text-transform: uppercase; letter-spacing: .02em; }
+#pdView .mie dd { margin: 0; font-family: var(--font-r); font-size: 16px; font-weight: 700; color: var(--label); }
+#pdView .mie .wide { grid-column: span 2; flex-direction: row; justify-content: space-between; align-items: baseline; gap: 6px; padding: 8px 14px; box-shadow: inset 0 .5px 0 var(--sep); }
+#pdView .mie .wide + .wide { box-shadow: inset 0 .5px 0 var(--sep), inset .5px 0 0 var(--sep); }
+#pdView .mie .wide dt { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--label2); white-space: nowrap; }
+#pdView .mie .wide.travel dd { color: var(--accent-text); }
+@media (max-width: 420px) { #pdView .mie .wide { padding: 8px 10px; } #pdView .mie .wide dd { font-size: 15px; } }
+
+#pdView .whead .label em { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--label3); margin-left: 6px; }
+#pdView .dates { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; }
+#pdView .frow { display: grid; grid-template-columns: 56px minmax(0, 1fr); align-items: center; gap: 10px; }
+#pdView .frow > .label { margin: 0; }
+#pdView .trip2 .big { margin-top: 10px; }
+#pdView .bd { margin: 10px 0 0; padding: 0 12px 0 14px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; column-gap: 12px; row-gap: 6px; align-items: baseline; font-size: 14px; }
+#pdView .bd:empty { display: none; }
+#pdView .bd dt { font-weight: 600; color: var(--label); }
+#pdView .bd dd { margin: 0; color: var(--label2); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#pdView .bd dd.amt { color: var(--label); font-family: var(--font-r); font-weight: 700; text-align: right; overflow: visible; }
+#pdView .bd dd.amt.minus { color: var(--label2); }
+#pdView .pdnote { margin: 10px 2px 0 14px; font-size: 13px; color: var(--label3); line-height: 1.4; }
+#pdView .pdnote b { color: var(--label2); font-weight: 600; }
+#pdView details.days { margin-top: 10px; }
+#pdView details.days > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 8px; padding: 6px 2px; font-size: 13px; font-weight: 600; color: var(--label2); text-transform: uppercase; letter-spacing: .05em; }
+#pdView details.days > summary::-webkit-details-marker { display: none; }
+#pdView details.days > summary::after { content: "›"; margin-left: auto; transform: rotate(90deg); color: var(--label3); font-size: 16px; }
+#pdView details.days:not([open]) > summary::after { transform: none; }
+#pdView details.days > summary span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--label3); }
+#pdView .trip2 details.help { margin-top: 10px; }
+#pdView details.help li.src { color: var(--label3); font-size: 13px; }
+#pdView details.help a { color: var(--accent-text); }
+@media (max-width: 420px) { #pdView .frow { grid-template-columns: 52px minmax(0,1fr); } }
+/* day by day */
+#pdView .drow, #pdView .dcols { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(0,.8fr) auto minmax(0,1fr); grid-template-areas: "day hotel meals mie"; align-items: center; column-gap: 10px; padding: 7px 12px; position: relative; font-variant-numeric: tabular-nums; }
+#pdView .dcols { padding-block: 0 4px; font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--label3); }
+#pdView .dcols span:nth-child(3) { text-align: center; } #pdView .dcols span:nth-child(4) { text-align: right; }
+#pdView .drow + .drow::before { content: ""; position: absolute; left: 12px; right: 0; top: 0; height: .5px; background: var(--sep); }
+#pdView .dday { grid-area: day; display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+#pdView .dday b { font-size: 14px; font-weight: 600; color: var(--label); }
+#pdView .dday span { font-size: 13px; color: var(--label3); }
+#pdView .dhotel { grid-area: hotel; font-family: var(--font-r); font-size: 15px; font-weight: 600; color: var(--label); }
+#pdView .dhotel.none { color: var(--label3); font-weight: 500; font-family: var(--font); font-size: 13px; }
+#pdView .dmeals { grid-area: meals; display: flex; justify-content: center; gap: 4px; }
+#pdView .mchip { width: 34px; height: 30px; border: 0; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; background: var(--accent-soft); color: var(--accent-text); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
+#pdView .mchip[aria-pressed="true"] { background: transparent; color: var(--label3); box-shadow: inset 0 0 0 1px var(--sep); text-decoration: line-through; }
+#pdView .mchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#pdView .dmie { grid-area: mie; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15; font-family: var(--font-r); min-width: 0; }
+#pdView .dmie b { font-size: 16px; font-weight: 700; color: var(--label); }
+#pdView .dmie span { white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--label3); }
+#pdView .dmie span.travel { color: var(--accent-text); }
+@media (max-width: 560px) {
+  #pdView .dcols { display: none; }
+  #pdView .drow { grid-template-columns: minmax(0,1fr) auto; grid-template-areas: "day mie" "hotel meals"; row-gap: 6px; padding: 8px 12px; }
+  #pdView .dmeals { justify-content: flex-end; }
+  #pdView .dhotel::before { content: "Hotel "; font-family: var(--font); font-size: 13px; font-weight: 500; color: var(--label3); }
+  #pdView .dhotel.none::before { content: none; }
+}
+
 /* no live blur: the page behind every card is plain near-black, so backdrop blur drew nothing visible,
    and Safari repaints blurred layers (and blurred pills inside them) while scrolling, which flickered */
 html body .glass, html body .glass-clear, html body .seg.ap::before, html body .seg.slide:not(.ap)::before { -webkit-backdrop-filter: none; backdrop-filter: none; }
@@ -769,8 +899,13 @@ html body .glass, html body .glass-clear, html body .seg.ap::before, html body .
       </div>
     </div>
   </header>
+  <div class="viewbar">
+    <div class="seg" role="group" aria-label="Calculator" id="viewSeg">
+      <button type="button" data-v="hr" aria-pressed="true">Hours</button><button type="button" data-v="pd" aria-pressed="false">Per diem</button>
+    </div>
+  </div>
 
-  <main>
+  <main id="hrView">
   <form class="grid" id="form" autocomplete="off" novalidate>
     <div class="col-in">
     <div class="card glass entry">
@@ -878,6 +1013,72 @@ html body .glass, html body .glass-clear, html body .seg.ap::before, html body .
     </div>
     <p class="wwarn" id="wWarn" role="status" hidden></p>
   </section>
+  </main>
+  <main id="pdView" hidden>
+  <form class="pdgrid" id="pdForm" autocomplete="off" novalidate>
+    <div class="card glass trip">
+      <div class="rhead"><label class="label" for="pdQ">Where are you going?</label></div>
+      <div class="qwrap">
+        <input class="pick q" type="search" id="pdQ" placeholder="City, state or ZIP" enterkeyhint="search" spellcheck="false" autocapitalize="words" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="pdSug" aria-autocomplete="list">
+        <ul class="sug" id="pdSug" role="listbox" aria-label="Places" hidden></ul>
+      </div>
+      <p class="fielderr" id="pdErr" role="status" hidden></p>
+    </div>
+
+    <section class="card glass result" aria-label="Per diem rates">
+      <div class="sr" id="pdStatus" role="status" aria-live="polite" aria-atomic="true"></div>
+      <div class="rhead"><span class="label">Per diem rates</span><span class="fy" id="pdFy">FY 2027</span></div>
+      <p class="pdempty" id="pdEmpty">Type a city, state or ZIP above to see its hotel (lodging) and meals (M&amp;IE) rates.</p>
+      <div id="pdRates" hidden>
+        <div class="place"><b id="pdPlace"></b><span id="pdCty"></span></div>
+        <div class="choices" id="pdChoices" hidden></div>
+        <div id="pdNums">
+          <div class="big two">
+            <div class="stat"><span class="k" id="pdLk">Lodging</span><div class="hm" id="pdL"></div><span class="u">per night</span></div>
+            <div class="stat"><span class="k">M&amp;IE</span><div class="hm" id="pdM"></div><span class="u">per day</span></div>
+          </div>
+          <div class="sub2"><span class="label">Lodging by month</span><span class="note" id="pdLnote"></span></div>
+          <div class="months" id="pdMonths"></div>
+          <div class="sub2"><span class="label">Meals &amp; incidentals</span></div>
+          <dl class="mie" id="pdMie"></dl>
+          <div class="badges" id="pdBadges"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card glass week trip2" aria-labelledby="pdTripTitle">
+      <div class="whead"><span class="label" id="pdTripTitle">Trip total <em>optional</em></span><button type="button" class="ghost" id="pdClear">Clear</button></div>
+      <div class="dates">
+        <div class="frow"><label class="label" for="pdLeave">Leave</label><input class="pick" type="date" id="pdLeave"></div>
+        <div class="frow"><label class="label" for="pdBack">Return</label><input class="pick" type="date" id="pdBack"></div>
+      </div>
+      <div class="tripout" id="pdTripOut">
+        <div class="big"><div class="hm" id="pdTotal"></div><button type="button" class="copy hero-copy" id="pdCopy" aria-label="Copy trip total">Copy</button></div>
+        <dl class="bd" id="pdBreak"></dl>
+        <p class="pdnote" id="pdNote"></p>
+        <details class="days" id="pdDaysDisc" open>
+          <summary>Day by day <span>tap a meal you were given</span></summary>
+          <div class="wlist">
+            <div class="dcols" aria-hidden="true"><span>Day</span><span>Hotel</span><span>Meals given</span><span>M&amp;IE</span></div>
+            <div id="pdRows"></div>
+          </div>
+        </details>
+      </div>
+      <details class="help">
+        <summary>How per diem works</summary>
+        <ul>
+          <li>Per diem is a daily allowance for hotel (lodging) plus meals and incidentals (M&amp;IE) when you travel for work.</li>
+          <li>Lodging is a cap per night, and it can change by month. You're paid what the room cost, up to the cap. Taxes are claimed separately.</li>
+          <li>M&amp;IE is the full daily rate on middle days and 75% on the day you leave and the day you return.</li>
+          <li>If a meal was given to you (at a conference, say), its amount comes off that day. Meals on a plane or a free hotel breakfast don't count.</li>
+          <li>GSA sets rates by county. A ZIP gives GSA's exact answer; a city that crosses into another rate area lets you pick.</li>
+          <li>Places not on GSA's list get the standard rate. GSA's year runs Oct 1 to Sep 30.</li>
+          <li>Covers the 48 states and DC. Alaska, Hawaii and U.S. territories use Defense Department rates.</li>
+          <li class="src">Rates: <a href="https://www.gsa.gov/travel/plan-a-trip/per-diem-rates" target="_blank" rel="noopener">GSA per diem files</a>, <span id="pdFyNote">FY 2027</span>. Place names: <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (CC BY 4.0) and the U.S. Census Bureau. Check with your employer; their policy may differ.</li>
+        </ul>
+      </details>
+    </section>
+  </form>
   </main>
 </div>
 
@@ -1460,6 +1661,375 @@ html body .glass, html body .glass-clear, html body .seg.ap::before, html body .
     S = normalise(null);
     try { build(); } catch (e3) { console.error(e3); }
   }
+})();
+</script>
+<script>
+// ---- per diem view (GSA lodging + M&IE rates). Kept apart from the hours code: its own state, its own errors ----
+(() => {
+  /* pd-core:start (pure lookup code, no DOM; scripts/check_perdiem.mjs runs this exact block) */
+  const PDcore = (() => {
+    const NAMES = { AL: 'Alabama', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', DC: 'District of Columbia', FL: 'Florida', GA: 'Georgia', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
+      AK: 'Alaska', HI: 'Hawaii', PR: 'Puerto Rico', GU: 'Guam', VI: 'U.S. Virgin Islands', AS: 'American Samoa', MP: 'Northern Mariana Islands', MH: 'Marshall Islands', FM: 'Micronesia', PW: 'Palau', MIL: 'Military mail (APO/FPO)' };
+    const CONUS = new Set('AL AZ AR CA CO CT DE DC FL GA ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' '));
+    // same rules as key() in scripts/build_perdiem.py: no accents or punctuation, Saint/Fort/Mount spelled out
+    function key(s) {
+      return String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/&/g, ' and ')
+        .replace(/[.'’`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim()
+        .replace(/\bst\b/g, 'saint').replace(/\bste\b/g, 'sainte').replace(/\bft\b/g, 'fort').replace(/\bmt\b/g, 'mount');
+    }
+    // state words are matched before key() runs, so "MT" stays Montana and doesn't become "mount"
+    const words = (s) => String(s).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[.'\u2019`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    const ST_BY_KEY = {};
+    Object.keys(NAMES).forEach(c => { ST_BY_KEY[c.toLowerCase()] = c; ST_BY_KEY[words(NAMES[c])] = c; });
+    ST_BY_KEY['washington dc'] = 'DC';
+    'ala:AL ariz:AZ ark:AR calif:CA cal:CA colo:CO conn:CT del:DE fla:FL ill:IL ind:IN kan:KS kans:KS mass:MA mich:MI minn:MN miss:MS mont:MT neb:NE nebr:NE nev:NV okla:OK ore:OR penn:PA tenn:TN tex:TX wash:WA wis:WI wisc:WI wyo:WY'
+      .split(' ').forEach(x => { const [k, c] = x.split(':'); ST_BY_KEY[k] = c; });
+    const W = 11; // ZIP record: zip(5) + place index (4, base 36) + area (2, base 36; zz = split, yy = outside CONUS)
+    let D = null, P = [], INF = new Set(), NZ = 0;
+
+    function index(data) {
+      D = data; P = []; INF = new Set((data.zinf || '').split(' ').filter(Boolean)); NZ = data.zips.length / W;
+      Object.keys(data.places).forEach(st => {
+        if (!data.places[st]) return;
+        data.places[st].split('|').forEach(rec => {
+          const e = rec.indexOf('=');
+          let head = e < 0 ? rec : rec.slice(0, e), r = 0;
+          const t = head.lastIndexOf('~');
+          if (t >= 0) { r = +head.slice(t + 1); head = head.slice(0, t); }
+          P.push({ n: head, st, k: key(head), r, spec: e < 0 ? '' : rec.slice(e + 1) });
+        });
+      });
+      return P.length;
+    }
+    const outside = (st) => !CONUS.has(st);
+    function choicesOf(spec, st) {
+      if (outside(st)) return [];
+      if (!spec) return [{ a: 0, lab: '' }];
+      if (spec.indexOf(':') < 0) return [{ a: +spec, lab: '' }];
+      return spec.split(';').map(x => { const i = x.indexOf(':'); return { a: +x.slice(0, i), lab: x.slice(i + 1) }; });
+    }
+    function placeItem(p) {
+      return { kind: 'place', n: p.n, st: p.st, label: p.n + ', ' + p.st, out: outside(p.st), choices: choicesOf(p.spec, p.st) };
+    }
+    const zipAt = (i) => D.zips.substr(i * W, W);
+    function lowerBound(z) { let lo = 0, hi = NZ; while (lo < hi) { const m = (lo + hi) >> 1; if (zipAt(m).slice(0, 5) < z) lo = m + 1; else hi = m; } return lo; }
+    function zipItem(rec) {
+      const z = rec.slice(0, 5), pr = rec.slice(5, 9), ac = rec.slice(9, 11), p = pr === 'zzzz' ? null : P[parseInt(pr, 36)];
+      const st = p ? p.st : '', out = ac === 'yy';
+      const choices = out ? [] : ac === 'zz' ? D.zx[z].map(x => ({ a: x[0], lab: x[1] })) : [{ a: parseInt(ac, 36), lab: '' }];
+      return { kind: 'zip', zip: z, n: p ? p.n : '', st, label: z + (p ? ' · ' + p.n + ', ' + st : ''), out, choices, inferred: INF.has(z) };
+    }
+    function zip(z) { const i = lowerBound(z); return i < NZ && zipAt(i).slice(0, 5) === z ? zipItem(zipAt(i)) : null; }
+    function findPlace(st, n) { for (let i = 0; i < P.length; i++) if (P[i].st === st && P[i].n === n) return placeItem(P[i]); return null; }
+
+    // "Dayton, OH", "dayton oh", "Dayton Ohio", "45402"
+    function parseQ(q) {
+      const t = String(q || '').trim();
+      const zm = /^(\d{3,5})(-\d{0,4})?$/.exec(t);
+      if (zm) return { zip: zm[1] };
+      const c = t.lastIndexOf(',');
+      if (c >= 0) {
+        const nk = key(t.slice(0, c)), sk = words(t.slice(c + 1)), st = sk ? ST_BY_KEY[sk] : null;
+        if (st || !sk) return { k: nk, st: st || null, alt: null };
+        return { k: key(t), st: null, alt: null, stBad: !!nk }; // "Islamorada, Village of Islands": comma inside the name
+      }
+      const w = words(t).split(' ');
+      for (let n = Math.min(3, w.length - 1); n >= 1; n--) {
+        const st = ST_BY_KEY[w.slice(-n).join(' ')];
+        if (st) return { k: key(w.slice(0, -n).join(' ')), st, alt: key(t) };
+      }
+      return { k: key(t), st: null, alt: null };
+    }
+    function match(k, st, max) {
+      const hits = [];
+      if (!k) return hits;
+      for (let i = 0; i < P.length; i++) {
+        const p = P[i];
+        if ((st && p.st !== st) || !p.k.startsWith(k)) continue;
+        hits.push(p);
+      }
+      hits.sort((a, b) => (b.k === k) - (a.k === k) || outside(a.st) - outside(b.st) || b.r - a.r || a.k.length - b.k.length || (a.n < b.n ? -1 : a.n > b.n ? 1 : 0) || (a.st < b.st ? -1 : 1));
+      return hits.slice(0, max).map(placeItem);
+    }
+    function search(q, max = 8) {
+      if (!D) return [];
+      const pq = parseQ(q);
+      if (pq.zip) {
+        if (pq.zip.length === 5) { const r = zip(pq.zip); return r ? [r] : []; }
+        const out = [];
+        for (let i = lowerBound(pq.zip); i < NZ && out.length < max; i++) { const rec = zipAt(i); if (!rec.startsWith(pq.zip)) break; out.push(zipItem(rec)); }
+        return out;
+      }
+      let r = match(pq.k, pq.st, max);
+      if (pq.alt) { // "Lake in the Hills" style names that end in a state-like word: also try the whole text
+        const r2 = match(pq.alt, null, max).filter(x => !r.some(y => y.label === x.label));
+        r = r.length ? r.concat(r2).slice(0, max) : r2;
+      }
+      return r;
+    }
+    return { index, search, zip, findPlace, parseQ, key, NAMES, CONUS, get data() { return D; }, get places() { return P; } };
+  })();
+  /* pd-core:end */
+
+  const DATA_URL = 'data/perdiem-fy2027.json';
+  const KEY = 'shift-hours-perdiem-v1', VKEY = 'shift-hours-view';
+  const $ = (id) => document.getElementById(id);
+  const esc = (t) => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const money = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const usd = (n) => '$' + money(n), whole = (n) => '$' + money(n).replace(/\.00$/, '');
+  const parseD = (s) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+  const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const MEALS = ['B', 'L', 'D'], MEALN = ['breakfast', 'lunch', 'dinner'];
+  const fyIdx = (d) => (d.getMonth() + 3) % 12; // data months run Oct..Sep
+  const DOD = 'https://www.travel.dod.mil/Travel-Transportation-Rates/Per-Diem/Per-Diem-Rate-Lookup/';
+
+  // ---- saved state (separate key from the hours state) ----
+  const norm = (r) => {
+    if (!r || typeof r !== 'object') r = {};
+    return { sel: r.sel && typeof r.sel === 'object' ? r.sel : null, ch: Number.isInteger(r.ch) ? r.ch : null,
+      leave: typeof r.leave === 'string' ? r.leave : '', back: typeof r.back === 'string' ? r.back : '',
+      given: r.given && typeof r.given === 'object' && !Array.isArray(r.given) ? r.given : {} };
+  };
+  let S;
+  try { S = norm(JSON.parse(localStorage.getItem(KEY))); } catch (e) { S = norm(null); }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+  // ---- data (fetched the first time the view opens) ----
+  let D = null, loading = null, failed = false, cur = null; // cur = resolved item for S.sel
+  function ensureData() {
+    if (D || loading) return loading;
+    failed = false; render();
+    loading = fetch(DATA_URL).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(d => {
+      PDcore.index(d); D = d;
+      const fy = 'FY ' + d.fy; $('pdFy').textContent = fy; $('pdFyNote').textContent = fy;
+      $('pdLeave').min = $('pdBack').min = d.start; $('pdLeave').max = $('pdBack').max = d.end;
+      cur = restore();
+      render();
+      if (document.activeElement === q && q.value) showSug();
+    }).catch(e => { console.error(e); failed = true; render(); }).finally(() => { loading = null; });
+    return loading;
+  }
+  function restore() {
+    const s = S.sel;
+    if (!s) return null;
+    const it = s.t === 'z' ? PDcore.zip(String(s.z)) : PDcore.findPlace(String(s.st), String(s.n));
+    if (!it) { S.sel = null; S.ch = null; save(); return null; }
+    if (S.ch != null && !it.choices.some(c => c.a === S.ch)) { S.ch = null; save(); }
+    return it;
+  }
+  const area = () => {
+    if (!cur || cur.out || !cur.choices.length) return null;
+    if (cur.choices.length === 1) return cur.choices[0].a;
+    return S.ch != null && cur.choices.some(c => c.a === S.ch) ? S.ch : null;
+  };
+
+  // ---- view switch ----
+  const viewSeg = $('viewSeg'), sub = document.querySelector('.wrap > header .sub'), subHr = sub ? sub.textContent : '';
+  function pill(seg) { const b = seg.querySelector('button[aria-pressed="true"]'); if (!b || !b.offsetWidth) return; seg.style.setProperty('--px', b.offsetLeft + 'px'); seg.style.setProperty('--pw', b.offsetWidth + 'px'); seg.style.setProperty('--po', '1'); }
+  function setView(v, keep) {
+    document.body.dataset.view = v;
+    $('hrView').hidden = v !== 'hr'; $('pdView').hidden = v !== 'pd';
+    viewSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+    if (sub) sub.textContent = v === 'pd' ? 'GSA hotel and meal rates for any U.S. city.' : subHr;
+    if (!keep) {
+      try { localStorage.setItem(VKEY, v); } catch (e) {}
+      // a #perdiem / #hours link picked the first view; after a tap, the remembered view wins
+      if (location.hash === '#perdiem' || location.hash === '#hours') try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    }
+    if (v === 'pd') ensureData();
+    requestAnimationFrame(() => document.querySelectorAll('.seg.slide').forEach(pill));
+  }
+  viewSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.v) setView(b.dataset.v); });
+
+  // ---- search box ----
+  const q = $('pdQ'), sug = $('pdSug');
+  let hits = [], act = 0;
+  function closeSug() { sug.hidden = true; q.setAttribute('aria-expanded', 'false'); q.removeAttribute('aria-activedescendant'); }
+  function sumLine(h) {
+    if (h.out) return 'Defense Dept. rates';
+    if (h.choices.length > 1) return h.choices.length + ' rate areas';
+    const a = D.areas[h.choices[0].a];
+    return h.choices[0].a === 0 ? 'Standard rate' : a[0];
+  }
+  function showSug() {
+    const err = $('pdErr'), t = q.value.trim();
+    err.hidden = true;
+    if (!t) { hits = []; closeSug(); return; }
+    if (!D) {
+      hits = [];
+      sug.innerHTML = '<li class="info" role="presentation">' + (failed ? 'Rates didn’t load. Check your connection.' : 'Loading GSA rates…') + '</li>';
+      sug.hidden = false; q.setAttribute('aria-expanded', 'true'); return;
+    }
+    hits = PDcore.search(t, 8); act = 0;
+    if (!hits.length) {
+      closeSug();
+      if (t.length > 1 && !/^\d{1,2}$/.test(t)) {
+        err.hidden = false;
+        err.textContent = /^\d+/.test(t) ? (/^\d{5}/.test(t) ? 'That ZIP isn’t a U.S. ZIP code we know.' : 'Type all 5 digits of the ZIP.')
+          : PDcore.parseQ(t).stBad ? 'After the comma, type a state, like “Dayton, OH”.' : 'No U.S. place called “' + t + '”. Check the spelling, or type the ZIP.';
+      }
+      return;
+    }
+    sug.innerHTML = hits.map((h, i) => '<li role="option" id="pdSg' + i + '" data-i="' + i + '" aria-selected="' + (i === act) + '"' + (!h.out && h.choices.length === 1 && h.choices[0].a === 0 ? ' class="std"' : '') + '><b>' + esc(h.label) + '</b><span>' + esc(sumLine(h)) + '</span></li>').join('');
+    sug.hidden = false; q.setAttribute('aria-expanded', 'true'); q.setAttribute('aria-activedescendant', 'pdSg0');
+  }
+  function choose(h) {
+    if (!h) return;
+    cur = h; S.sel = h.kind === 'zip' ? { t: 'z', z: h.zip } : { t: 'p', st: h.st, n: h.n }; S.ch = null;
+    q.value = ''; closeSug(); $('pdErr').hidden = true; save(); render(); q.blur();
+  }
+  q.addEventListener('input', () => { if (!D) ensureData(); showSug(); });
+  q.addEventListener('focus', () => { if (q.value) showSug(); });
+  q.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!hits.length || sug.hidden) return; e.preventDefault();
+      act = (act + (e.key === 'ArrowDown' ? 1 : hits.length - 1)) % hits.length;
+      [...sug.children].forEach((li, i) => li.setAttribute('aria-selected', String(i === act)));
+      q.setAttribute('aria-activedescendant', 'pdSg' + act);
+      const li = sug.children[act]; if (li && li.scrollIntoView) li.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') { e.preventDefault(); if (!sug.hidden && hits.length) choose(hits[act]); else showSug(); }
+    else if (e.key === 'Escape') closeSug();
+  });
+  // keep focus in the box while a suggestion is pressed, so the blur timer can't close the list before the tap lands
+  ['mousedown', 'pointerdown'].forEach(t => sug.addEventListener(t, e => { if (e.target.closest('li[data-i]')) e.preventDefault(); }));
+  sug.addEventListener('click', e => { const li = e.target.closest('li[data-i]'); if (li) choose(hits[+li.dataset.i]); });
+  q.addEventListener('blur', () => setTimeout(closeSug, 250));
+
+  // ---- rates card ----
+  function nowIdx() { const t = new Date(), a = parseD(D.start), b = parseD(D.end); return t >= a && t <= new Date(b.getFullYear(), b.getMonth(), b.getDate() + 1) ? fyIdx(t) : 0; }
+  function renderRates() {
+    const empty = $('pdEmpty'), box = $('pdRates');
+    if (!D) {
+      box.hidden = true; empty.hidden = false; empty.classList.toggle('err', failed);
+      empty.innerHTML = failed ? 'The GSA rates didn’t load. Check your connection and try again.<button type="button" id="pdRetry">Try again</button>' : 'Loading GSA rates…';
+      if (failed) $('pdRetry').addEventListener('click', ensureData);
+      return;
+    }
+    if (!cur) { box.hidden = true; empty.hidden = false; empty.classList.remove('err'); empty.innerHTML = 'Type a city, state or ZIP above to see its hotel (lodging) and meals (M&amp;IE) rates.'; $('pdStatus').textContent = ''; return; }
+    empty.hidden = true; box.hidden = false;
+    $('pdPlace').textContent = cur.label;
+    const chBox = $('pdChoices'), nums = $('pdNums'), ni = nowIdx();
+    if (cur.out) {
+      $('pdCty').textContent = '';
+      chBox.hidden = false; nums.hidden = true;
+      const nm = PDcore.NAMES[cur.st] || 'this place';
+      chBox.innerHTML = '<p>' + esc(nm) + ' isn’t covered by GSA. Rates for Alaska, Hawaii and U.S. territories are set by the Defense Department: <a href="' + DOD + '" target="_blank" rel="noopener">look them up on travel.dod.mil</a>.</p>';
+      $('pdStatus').textContent = nm + ': rates come from the Defense Department, not GSA';
+      return;
+    }
+    const a = area();
+    if (cur.choices.length > 1) {
+      chBox.hidden = false;
+      const what = cur.kind === 'zip' ? 'ZIP ' + cur.zip + ' crosses more than one rate area.' : cur.label + ' crosses more than one rate area.';
+      chBox.innerHTML = '<p>' + esc(what) + ' Pick where you’ll stay:</p>' + cur.choices.map(c => {
+        // same-name towns can list dozens of counties: show three and a count
+        const cs = c.lab ? c.lab.split(', ') : [];
+        const A = D.areas[c.a], lab = cs.length > 3 ? cs.slice(0, 3).join(', ') + ' and ' + (cs.length - 3) + ' more' : c.lab || (c.a === 0 ? 'Counties not on GSA’s list' : A[2]);
+        return '<button type="button" class="choice" data-a="' + c.a + '" aria-pressed="' + (c.a === a) + '"><b>' + esc(c.a === 0 ? 'Standard rate' : A[0] + ', ' + A[1]) + '</b><small>' + esc(lab) + '</small><span>$' + A[4][ni] + ' · $' + A[3] + '</span></button>';
+      }).join('');
+    } else { chBox.hidden = true; chBox.innerHTML = ''; }
+    if (a == null) { nums.hidden = true; $('pdCty').textContent = ''; $('pdStatus').textContent = cur.label + ': pick a rate area'; return; }
+    nums.hidden = false;
+    const A = D.areas[a], L = A[4], m = A[3], sp = D.mie[m];
+    $('pdCty').textContent = a === 0 ? 'Standard rate: this county isn’t on GSA’s list' : 'Rate area: ' + A[0] + ', ' + A[1] + ' · ' + A[2];
+    $('pdLk').textContent = 'Lodging in ' + D.months[ni];
+    $('pdL').innerHTML = '<span class="cur">$</span>' + L[ni];
+    $('pdM').innerHTML = '<span class="cur">$</span>' + m;
+    const hi = Math.max(...L), lo = Math.min(...L);
+    $('pdMonths').innerHTML = L.map((v, i) => '<div class="mo' + (i === ni ? ' now' : '') + (hi !== lo && v === lo ? ' lo' : '') + '"><span>' + D.months[i] + '</span><b>$' + v + '</b></div>').join('');
+    $('pdLnote').textContent = hi === lo ? 'Same all year' : 'Changes by month';
+    $('pdMie').innerHTML = ['Breakfast', 'Lunch', 'Dinner', 'Incidentals'].map((k, i) => '<div><dt>' + k + '</dt><dd>$' + sp[i] + '</dd></div>').join('') +
+      '<div class="wide"><dt>Full day</dt><dd>$' + m + '</dd></div><div class="wide travel"><dt>First &amp; last day</dt><dd>' + whole(m * 0.75) + '</dd></div>';
+    const b = [];
+    if (a === 0) b.push('<span class="badge">Standard rate</span>');
+    if (cur.inferred) b.push('<span class="badge">ZIP not in GSA’s list: rate from the same area</span>');
+    if (new Date() < parseD(D.start)) b.push('<span class="badge">FY ' + D.fy + ' rates start ' + fmtD(parseD(D.start), 1) + '</span>');
+    if (new Date() > new Date(parseD(D.end).getTime() + 864e5)) b.push('<span class="badge err">FY ' + D.fy + ' rates; newer ones may apply</span>');
+    $('pdBadges').innerHTML = b.join('');
+    $('pdStatus').textContent = cur.label + ': lodging $' + L[ni] + ' a night, M&IE $' + m + ' a day';
+  }
+  $('pdChoices').addEventListener('click', e => { const b = e.target.closest('.choice'); if (!b) return; S.ch = +b.dataset.a; save(); render(); });
+
+  // ---- trip total ----
+  function compute() {
+    if (!D) return { err: failed ? 'The rates didn’t load, so there’s no trip total yet.' : 'Loading rates…' };
+    const a = parseD(S.leave), b = parseD(S.back);
+    if (!a || !b) return { err: 'Add the day you leave and the day you return to see a trip total.' };
+    if (b < a) return { err: 'The return day is before the day you leave.', bad: true };
+    if (a < parseD(D.start) || b > parseD(D.end)) return { err: 'This uses FY ' + D.fy + ' rates, so dates must fall between ' + fmtD(parseD(D.start), 1) + ' and ' + fmtD(parseD(D.end), 1) + '.' };
+    const ai = area();
+    if (ai == null) return { err: cur && cur.out ? 'Trip totals cover the 48 states and DC only.' : cur ? 'Pick a rate area above first.' : 'Pick a place above first.' };
+    const n = Math.round((b - a) / 864e5) + 1;
+    if (n > 30) return { err: 'Trips longer than 30 days often use different rules. Try a shorter trip.' };
+    const A = D.areas[ai], m = A[3], split = D.mie[m], days = [];
+    for (let i = 0; i < n; i++) {
+      const d = new Date(a.getFullYear(), a.getMonth(), a.getDate() + i), k = iso(d);
+      const night = i < n - 1, hotel = night ? A[4][fyIdx(d)] : 0;
+      const travel = n === 1 || i === 0 || i === n - 1, base = travel ? m * 0.75 : m;
+      const g = Array.isArray(S.given[k]) ? S.given[k] : [false, false, false];
+      const given = [0, 1, 2].map(j => !!g[j]);
+      const off = given.reduce((s, x, j) => s + (x ? split[j] : 0), 0);
+      days.push({ d, k, night, hotel, travel, base, given, off, mie: Math.max(0, base - off) });
+    }
+    const sum = (f) => days.reduce((s, x) => s + f(x), 0);
+    return { n, nights: n - 1, m, days, hotel: sum(x => x.hotel), full: days.filter(x => !x.travel).length, travelN: days.filter(x => x.travel).length,
+      fullAmt: sum(x => x.travel ? 0 : x.base), travelAmt: sum(x => x.travel ? x.base : 0), off: sum(x => Math.min(x.off, x.base)), total: sum(x => x.hotel + x.mie) };
+  }
+  function fmtD(d, long) { return long ? MON[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() : DOW[d.getDay()] + ' ' + MON[d.getMonth()] + ' ' + d.getDate(); }
+  function renderTrip() {
+    $('pdLeave').value = S.leave || ''; $('pdBack').value = S.back || '';
+    const r = compute();
+    $('pdBack').classList.toggle('bad', !!r.bad);
+    if (r.err) {
+      $('pdTotal').innerHTML = '<span class="cur">$</span>0<span class="cts">.00</span>'; $('pdTotal').classList.add('err'); $('pdCopy').disabled = true;
+      $('pdBreak').innerHTML = ''; $('pdRows').innerHTML = ''; $('pdNote').textContent = r.err; $('pdDaysDisc').hidden = true; return;
+    }
+    $('pdDaysDisc').hidden = false; $('pdTotal').classList.remove('err'); $('pdCopy').disabled = false;
+    const t = money(r.total).split('.');
+    $('pdTotal').innerHTML = '<span class="cur">$</span>' + t[0] + '<span class="cts">.' + t[1] + '</span>';
+    const rows = [];
+    if (r.nights) { const c = [...new Set(r.days.filter(x => x.night).map(x => x.hotel))]; rows.push(['Lodging', r.nights + ' night' + (r.nights > 1 ? 's' : '') + (c.length === 1 ? ' × $' + c[0] : ', by month'), usd(r.hotel)]); }
+    if (r.full) rows.push(['M&IE', r.full + ' full day' + (r.full > 1 ? 's' : '') + ' × $' + r.m, usd(r.fullAmt)]);
+    rows.push(['Travel days', r.travelN + ' × ' + whole(r.m * 0.75) + ' (75%)', usd(r.travelAmt)]);
+    const gl = {}; r.days.forEach(x => x.given.forEach((g, j) => { if (g) gl[MEALN[j]] = (gl[MEALN[j]] || 0) + 1; }));
+    if (Object.keys(gl).length) rows.push(['Meals given', Object.keys(gl).map(k => gl[k] + ' ' + k).join(', '), '−' + usd(r.off), 'minus']);
+    $('pdBreak').innerHTML = rows.map(x => '<dt>' + x[0] + '</dt><dd>' + x[1] + '</dd><dd class="amt' + (x[3] ? ' ' + x[3] : '') + '">' + x[2] + '</dd>').join('');
+    const where = cur.n || cur.label;
+    $('pdNote').innerHTML = r.n === 1 ? 'Same-day trip: no lodging, and M&amp;IE usually only if it ran over 12 hours.' : '<b>' + r.nights + ' night' + (r.nights > 1 ? 's' : '') + '</b> in ' + esc(where) + ', ' + fmtD(r.days[0].d) + ' to ' + fmtD(r.days[r.n - 1].d) + '.';
+    $('pdRows').innerHTML = r.days.map((x, i) => '<div class="drow">' +
+      '<div class="dday"><b>' + fmtD(x.d) + '</b><span>' + (r.n === 1 ? 'Same day' : i === 0 ? 'Leave' : i === r.n - 1 ? 'Return' : 'Day ' + (i + 1)) + '</span></div>' +
+      (x.night ? '<div class="dhotel">$' + x.hotel + '</div>' : '<div class="dhotel none">No hotel</div>') +
+      '<div class="dmeals">' + MEALS.map((mm, j) => '<button type="button" class="mchip" data-k="' + x.k + '" data-j="' + j + '" aria-pressed="' + x.given[j] + '" aria-label="' + MEALN[j] + ' given ' + fmtD(x.d) + '">' + mm + '</button>').join('') + '</div>' +
+      '<div class="dmie"><b>' + usd(x.mie) + '</b><span class="' + (x.travel ? 'travel' : '') + '">' + (x.travel ? '75% day' : 'Full day') + '</span>' + (x.off ? '<span>−$' + x.off + ' given</span>' : '') + '</div></div>').join('');
+  }
+  function render() { renderRates(); renderTrip(); }
+  const set = (fn) => { fn(); save(); render(); };
+  $('pdLeave').addEventListener('change', e => set(() => { S.leave = e.target.value; if (S.back && S.leave && S.back < S.leave) S.back = S.leave; }));
+  $('pdBack').addEventListener('change', e => set(() => { S.back = e.target.value; }));
+  $('pdRows').addEventListener('click', e => { const b = e.target.closest('.mchip'); if (!b) return; set(() => { const g = (Array.isArray(S.given[b.dataset.k]) ? S.given[b.dataset.k] : [false, false, false]).slice(); g[+b.dataset.j] = !g[+b.dataset.j]; S.given[b.dataset.k] = g; }); });
+  $('pdClear').addEventListener('click', () => set(() => { S.leave = ''; S.back = ''; S.given = {}; }));
+  $('pdCopy').addEventListener('click', () => {
+    const r = compute(); if (r.err) return;
+    const btn = $('pdCopy'), txt = money(r.total);
+    const done = (ok) => { btn.classList.toggle('ok', ok); btn.textContent = ok ? 'Copied' : 'Select to copy'; clearTimeout(btn._t); btn._t = setTimeout(() => { btn.classList.remove('ok'); btn.textContent = 'Copy'; }, 1500); };
+    const legacy = () => { try { const ta = document.createElement('textarea'); ta.value = txt; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); done(ok); } catch (e) { done(false); } };
+    try { navigator.clipboard.writeText(txt).then(() => done(true), legacy); } catch (e) { legacy(); }
+  });
+  $('pdForm').addEventListener('submit', e => e.preventDefault());
+  // another tab changed the per diem state
+  window.addEventListener('storage', e => {
+    if (e.storageArea !== localStorage || e.key !== KEY || !e.newValue) return;
+    try { S = norm(JSON.parse(e.newValue)); cur = D ? restore() : null; render(); } catch (x) {}
+  });
+
+  window.__perdiem = { core: PDcore, compute, setView, ensureData, get S() { return S; } };
+  render();
+  const fromHash = () => location.hash === '#perdiem' ? 'pd' : location.hash === '#hours' ? 'hr' : null;
+  let v = fromHash();
+  if (!v) { try { v = localStorage.getItem(VKEY); } catch (e) {} }
+  setView(v === 'pd' ? 'pd' : 'hr', true);
+  window.addEventListener('hashchange', () => { const h = fromHash(); if (h) setView(h); });
 })();
 </script>
 <!-- Cloudflare Web Analytics: cookieless visitor counter -->
