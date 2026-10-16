@@ -275,7 +275,7 @@ details.help li::marker { color: var(--ink-3); }
 .wrow { min-height: 50px; border-top: 1px solid var(--rule); }
 .wrow:first-child { border-top: 0; }
 .wrow > * { grid-row: 1; min-width: 0; }
-.wday { grid-column: 1; grid-row: 1 / span 2 !important; display: flex; align-items: center; padding-left: 9px; font: 600 13px var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); white-space: nowrap; }
+.wday { grid-column: 1; grid-row: 1 / span 2 !important; align-self: start; display: flex; align-items: center; min-height: 49px; padding-left: 9px; font: 600 13px var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--ink); white-space: nowrap; }
 .wrow.today .wday span, .wrow.today .wday { text-decoration: underline 2px var(--ink-3); text-underline-offset: 4px; }
 .wrow .tfield { padding: 4px 5px; border-left: 1px solid var(--rule); gap: 4px; }
 .wrow .tfield.ws { grid-column: 2; } .wrow .tfield.we { grid-column: 3; }
@@ -293,8 +293,6 @@ details.help li::marker { color: var(--ink-3); }
 .wbrk .tin { flex: none; width: 52px; }
 .wbrk .unit { font-size: 13px; color: var(--ink-3); }
 .wrow .seg.ap button { width: 42px; height: 40px; font-size: 13px; border-width: 1px; }
-/* in the timecard the chosen half of the day is shown in ink, not stamp colour, so the total keeps the colour */
-.wrow .seg.ap button[aria-pressed="true"] { color: var(--ink); border-color: var(--ink-2); background: var(--paper); }
 .wmsg { grid-row: 2 !important; grid-column: 2 / -1; margin: -2px 0 0; padding: 0 8px 8px; font: italic 500 13px/1.3 var(--sans); color: var(--ink-2); }
 .wmsg[data-at="e"] { grid-column: 3 / -1; }
 .wmsg.bad { color: var(--alert); }
@@ -485,9 +483,10 @@ details.help li::marker { color: var(--ink-3); }
   .col-in { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
   #form .result { padding-left: 28px; border-left: 1px solid var(--rule); align-self: stretch; }
   #hm { font-size: 72px; }
-  .card.week { margin-top: 18px; padding: var(--pad); --wc: 84px minmax(0, 1fr) minmax(0, 1fr) 140px 120px; }
-  .wrow .tfield { justify-content: center; padding: 5px 10px; }
-  .wrow .tfield .tin { max-width: 120px; }
+  .card.week { margin-top: 18px; padding: var(--pad); --wc: 84px minmax(0, 1fr) minmax(0, 1fr) 132px 112px; }
+  .wrow .tfield { padding: 5px 10px; gap: 5px; }
+  .wrow .tfield .tin { max-width: none; text-align: left; padding: 0 12px; }
+  .wrow .seg.ap button { width: 48px; }
   .ghost { height: 36px; }
   #pdView .pdgrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); grid-template-areas: "trip res" "trip2 res"; grid-template-rows: auto 1fr; gap: 14px 28px; align-items: start; }
   #pdView .pdgrid > .trip { grid-area: trip; }
