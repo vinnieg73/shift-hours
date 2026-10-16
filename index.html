@@ -16,7 +16,7 @@
 <title>Shift Hours Calculator</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,500&display=swap" rel="stylesheet">
 <style>
 /* ================================================================
    INK: the one accent colour. Change it here and nowhere else.
@@ -50,7 +50,7 @@
   --ink-2: #4F473C;       /* secondary text, buttons */
   --ink-3: #6B6154;       /* printed labels, captions */
   --alert: #B3261E;       /* red: errors and things that need attention only */
-  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --mono: "Chivo Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --gut: 12px;            /* page side gutter */
   --pad: 12px;            /* card padding */
@@ -205,8 +205,8 @@ details.help li::marker { color: var(--ink-3); }
 .ghost[data-arm] { border-color: var(--ink); color: var(--ink); background: var(--card-deep); }
 #form .result .big { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding-left: 4px; }
 
-/* the stamp: decimal hours in a double frame, set slightly askew */
-#hm { position: relative; display: inline-flex; align-items: baseline; justify-content: center; min-width: 5.4ch; padding: 8px 16px 10px 14px; border: 2px solid var(--stamp); border-radius: 3px; color: var(--stamp); font: 600 60px/1 var(--mono); letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; transform: rotate(-1.5deg); }
+/* the stamp: decimal hours in a double frame, set straight */
+#hm { position: relative; display: inline-flex; align-items: baseline; justify-content: center; min-width: 5.4ch; padding: 8px 16px 10px 14px; border: 2px solid var(--stamp); border-radius: 3px; color: var(--stamp); font: 600 60px/1 var(--mono); letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 #hm::after { content: ""; position: absolute; inset: 3px; border: 1px solid var(--stamp); border-radius: 1px; pointer-events: none; }
 #hm .dg.pt { margin: 0 -.15em; }
 #hm small { margin-left: 8px; font: 600 18px/1 var(--sans); }
