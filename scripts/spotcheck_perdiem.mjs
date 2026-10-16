@@ -1,6 +1,6 @@
 // Spot-check the page's lookup against GSA's official per diem API (api.gsa.gov/travel/perdiem/v2).
 // Usage: node scripts/spotcheck_perdiem.mjs index.html data/perdiem-fy2027.json <cache dir> [api key]
-// DEMO_KEY allows about 30 calls an hour, so answers are cached in <cache dir> and reruns are free.
+// DEMO_KEY allows about 10 calls an hour, so answers are cached in <cache dir> and reruns are free.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -27,7 +27,14 @@ async function get(path) {
   if (existsSync(f)) return JSON.parse(readFileSync(f, 'utf8'));
   let r;
   for (let tries = 0; ; tries++) {
-    r = await fetch('https://api.gsa.gov/travel/perdiem/v2/' + path, { headers: { 'X-API-KEY': apiKey } });
+    try {
+      r = await fetch('https://api.gsa.gov/travel/perdiem/v2/' + path, { headers: { 'X-API-KEY': apiKey } });
+    } catch (e) { // dropped connection (GSA closes idle connections during the long waits): try again
+      if (tries > 40) throw e;
+      console.log(`  (network error: ${e.cause ? e.cause.code || e.message : e.message}; retrying in 30 s)`);
+      await new Promise(res => setTimeout(res, 30e3));
+      continue;
+    }
     if (r.status !== 429 || tries > 40) break;
     console.log(`  (rate limit hit at ${new Date().toTimeString().slice(0, 8)}; waiting 7 minutes)`);
     await new Promise(res => setTimeout(res, 7 * 60e3));
@@ -69,5 +76,20 @@ for (const [c, st] of CITY_CASES) {
   const ours = PD.search(c + ', ' + st)[0];
   console.log(`info GSA city search "${c}, ${st}": ${g.map(x => (x.city || '?') + ' $' + x.l[0] + '/$' + x.meals + (x.std === 'true' ? ' (standard)' : '')).join(' | ')}; ours: ${ours.choices.map(x => data.areas[x.a][0]).join(' | ')}`);
 }
-console.log(`spot check: ${pass} OK, ${fail} FAIL of ${CASES.length}`);
+// M&IE breakdown: every tier in our data must match GSA's breakfast / lunch / dinner / incidentals
+const mj = await get(`rates/conus/mie/${data.fy}`);
+const lc = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k.toLowerCase(), v]));
+const tiers = [];
+(function walk(x) {
+  if (Array.isArray(x)) x.forEach(walk);
+  else if (x && typeof x === 'object') { const o = lc(x); if ('total' in o && 'breakfast' in o) tiers.push(o); else Object.values(x).forEach(walk); }
+})(mj);
+for (const [tot, split] of Object.entries(data.mie)) {
+  const t = tiers.find(o => +o.total === +tot);
+  const g = t && [+t.breakfast, +t.lunch, +t.dinner, +(t.incidentals ?? t.incidental)];
+  const ok = g && JSON.stringify(g) === JSON.stringify(split);
+  ok ? pass++ : fail++;
+  console.log(`${ok ? 'OK  ' : 'FAIL'} M&IE $${tot}: ours ${split.join('/')}  GSA ${g ? g.join('/') : 'not found in ' + JSON.stringify(mj).slice(0, 300)}`);
+}
+console.log(`spot check: ${pass} OK, ${fail} FAIL of ${CASES.length + Object.keys(data.mie).length}`);
 process.exit(fail ? 1 : 0);
