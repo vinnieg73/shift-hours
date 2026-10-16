@@ -206,7 +206,7 @@ details.help li::marker { color: var(--ink-3); }
 #form .result .big { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; padding-left: 4px; }
 
 /* the stamp: decimal hours in a double frame, set slightly askew */
-#hm { position: relative; display: inline-flex; align-items: baseline; padding: 8px 16px 10px 14px; border: 2px solid var(--stamp); border-radius: 3px; color: var(--stamp); font: 600 60px/1 var(--mono); letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; transform: rotate(-1.5deg); }
+#hm { position: relative; display: inline-flex; align-items: baseline; justify-content: center; min-width: 5.4ch; padding: 8px 16px 10px 14px; border: 2px solid var(--stamp); border-radius: 3px; color: var(--stamp); font: 600 60px/1 var(--mono); letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; transform: rotate(-1.5deg); }
 #hm::after { content: ""; position: absolute; inset: 3px; border: 1px solid var(--stamp); border-radius: 1px; pointer-events: none; }
 #hm .dg.pt { margin: 0 -.15em; }
 #hm small { margin-left: 8px; font: 600 18px/1 var(--sans); }
@@ -405,7 +405,7 @@ details.help li::marker { color: var(--ink-3); }
 #pdView .pdnote:empty { display: none; }
 #pdView .pdnote b { color: var(--ink); font-weight: 600; }
 #pdView details.days { margin-top: 14px; }
-#pdView details.days > summary { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; min-height: 30px; list-style: none; cursor: pointer; font: 600 13px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+#pdView details.days > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; list-style: none; cursor: pointer; font: 600 13px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
 #pdView details.days > summary::-webkit-details-marker { display: none; }
 #pdView details.days > summary span { font: 400 13px var(--sans); letter-spacing: 0; text-transform: none; color: var(--ink-3); white-space: nowrap; }
 #pdView details.days .wlist { margin-top: 4px; background: none; border: 0; border-radius: 0; }
@@ -427,6 +427,7 @@ details.help li::marker { color: var(--ink-3); }
 #pdView .dmie { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 0; text-align: right; }
 #pdView .dmie b { font: 600 15px/1.1 var(--mono); color: var(--ink); white-space: nowrap; }
 #pdView .dmie span { font-size: 13px; line-height: 1.15; color: var(--ink-3); white-space: nowrap; }
+#pdView .dmie span + span { white-space: normal; }
 #pdView .trip2 details.help { margin: 14px -12px 0; }
 
 /* ---------- phones ---------- */
@@ -443,7 +444,7 @@ details.help li::marker { color: var(--ink-3); }
   .hmu { display: none; }
   .settings .srow > .seg { flex: 1 1 100%; }
   /* timecard: one line per day; AM/PM is one chip that flips when tapped */
-  .card.week { --wc: 40px minmax(0, 1fr) minmax(0, 1fr) 44px 56px; }
+  .card.week { --wc: 40px minmax(0, 1fr) minmax(0, 1fr) 46px 56px; }
   .wcols span { padding: 0 5px; letter-spacing: .05em; }
   .wcols span:first-child { padding-left: 6px; }
   .wcols span:last-child { padding-right: 6px; }
@@ -466,9 +467,11 @@ details.help li::marker { color: var(--ink-3); }
   #pdView .dcols, #pdView .drow { grid-template-columns: minmax(0, 1fr) 42px 128px 60px; column-gap: 5px; }
   #pdView .dmeals { gap: 4px; }
 }
-@media (max-width: 380px) {
-  #pdView .dcols, #pdView .drow { grid-template-columns: minmax(0, 1fr) 42px 126px 60px; column-gap: 4px; }
+@media (max-width: 360px) { #hm { font-size: 50px; } .copy { min-width: 84px; } }
+@media (max-width: 400px) {
+  #pdView .dcols, #pdView .drow { grid-template-columns: minmax(0, 1fr) 40px 126px 56px; column-gap: 3px; }
   #pdView .dmeals { gap: 3px; }
+  #pdView .dday b { font-size: 13px; }
 }
 
 /* ---------- desktop: two columns, entry and options left, result right ---------- */
@@ -517,7 +520,7 @@ details.help li::marker { color: var(--ink-3); }
         <p class="sub">Hours and minutes between two times, minus breaks.</p>
       </div>
     </div>
-    <div class="fmtbox glass">
+    <div class="fmtbox">
       <span class="label" id="fmtLabel">Clock format</span>
       <div class="seg" role="group" aria-labelledby="fmtLabel">
         <button type="button" id="fmt12" data-fmt="12" aria-label="12-hour">12 hr</button>
@@ -534,7 +537,7 @@ details.help li::marker { color: var(--ink-3); }
   <main id="hrView">
   <form class="grid" id="form" autocomplete="off" novalidate>
     <div class="col-in">
-    <div class="card glass entry">
+    <div class="card entry">
       <div class="times">
         <div class="trow"><label class="label" for="startIn">Start</label><div class="tfield" id="startField"></div></div>
         <div class="trow"><label class="label" for="endIn">End</label><div class="tfield" id="endField"></div></div>
@@ -544,7 +547,7 @@ details.help li::marker { color: var(--ink-3); }
       <p class="fielderr" id="fieldErr" role="status" hidden></p>
     </div>
 
-    <div class="card glass options">
+    <div class="card options">
       <div class="section">
         <div class="srow">
           <span class="label">Breaks</span>
@@ -588,7 +591,7 @@ details.help li::marker { color: var(--ink-3); }
     </div>
     </div>
 
-    <section class="card glass result" aria-label="Result">
+    <section class="card result" aria-label="Result">
       <div class="sr" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
       <div class="rhead"><span class="label">Decimal hours worked</span><button type="button" class="ghost" id="clear">Clear</button></div>
       <div class="big"><div class="hm" id="hm">0.00</div><button type="button" class="copy hero-copy" id="copyDec" aria-label="Copy decimal hours">Copy</button></div>
@@ -608,7 +611,7 @@ details.help li::marker { color: var(--ink-3); }
       </div>
     </section>
   </form>
-  <section class="card glass week" aria-labelledby="weekTitle">
+  <section class="card week" aria-labelledby="weekTitle">
     <div class="whead">
       <span class="label" id="weekTitle">Weekly timecard</span>
       <button type="button" class="ghost" id="clearWeek">Clear week</button>
@@ -630,7 +633,7 @@ details.help li::marker { color: var(--ink-3); }
   </main>
   <main id="pdView" hidden>
   <form class="pdgrid" id="pdForm" autocomplete="off" novalidate>
-    <div class="card glass trip">
+    <div class="card trip">
       <div class="rhead"><label class="label" for="pdQ">Destination</label></div>
       <div class="qwrap">
         <input class="pick q" type="search" id="pdQ" placeholder="City, state or ZIP" enterkeyhint="search" spellcheck="false" autocapitalize="words" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="pdSug" aria-autocomplete="list">
@@ -639,7 +642,7 @@ details.help li::marker { color: var(--ink-3); }
       <p class="fielderr" id="pdErr" role="status" hidden></p>
     </div>
 
-    <section class="card glass result" aria-label="Per diem rates">
+    <section class="card result" aria-label="Per diem rates">
       <div class="sr" id="pdStatus" role="status" aria-live="polite" aria-atomic="true"></div>
       <div class="rhead"><span class="label">Per diem rates</span><span class="fy" id="pdFy">FY 2027</span></div>
       <p class="pdempty" id="pdEmpty">Type a city, state or ZIP above to see its hotel (lodging) and meals (M&amp;IE) rates.</p>
@@ -660,7 +663,7 @@ details.help li::marker { color: var(--ink-3); }
       </div>
     </section>
 
-    <section class="card glass week trip2" aria-labelledby="pdTripTitle">
+    <section class="card week trip2" aria-labelledby="pdTripTitle">
       <div class="whead"><span class="label" id="pdTripTitle">Trip total <em>optional</em></span><button type="button" class="ghost" id="pdClear">Clear</button></div>
       <div class="dates">
         <div class="frow"><label class="label" for="pdLeave">Leave</label><input class="pick" type="date" id="pdLeave"></div>
