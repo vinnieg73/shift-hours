@@ -384,8 +384,7 @@ details.help li::marker { color: var(--ink-3); }
 #pdView .choice[aria-pressed="true"] small { color: var(--ink-2); }
 #pdView .choices a { color: var(--ink); }
 #pdView .big.two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
-#pdView .stat { position: relative; min-width: 0; padding: 10px 12px 11px; border: 1px solid var(--rule); border-radius: 2px; background: var(--well); }
-#pdView .stat::before { content: ""; position: absolute; left: -1px; top: -1px; width: 10px; height: 10px; border-left: 1.5px solid var(--stamp); border-top: 1.5px solid var(--stamp); pointer-events: none; }
+#pdView .stat { position: relative; min-width: 0; padding: 10px 12px 11px; border: 1px solid var(--rule); border-radius: var(--rc); background: var(--well); }
 #pdView .stat .k { display: block; font: 500 13px/1.2 var(--mono); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #pdView .stat .hm { margin-top: 8px; font: 600 30px/1 var(--mono); letter-spacing: -.03em; color: var(--ink); white-space: nowrap; }
 #pdView .stat .u { display: block; margin-top: 5px; font-size: 13px; color: var(--ink-3); }
@@ -423,12 +422,7 @@ details.help li::marker { color: var(--ink-3); }
 #pdView .bd dd { font-size: 14px; line-height: 1.2; color: var(--ink-3); }
 #pdView .bd dd:not(.amt) { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #pdView .bd dd.amt { font: 500 14px/1.2 var(--mono); color: var(--ink); white-space: nowrap; text-align: right; }
-#pdView .tripout .big { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 14px 12px 14px 14px; border: 1px solid var(--rule); border-radius: 2px; background: var(--well); }
-#pdView .tripout .big::before { content: ""; position: absolute; inset: -1px; pointer-events: none;
-  --b: linear-gradient(var(--stamp), var(--stamp));
-  background: var(--b) left top / 12px 1.5px, var(--b) left top / 1.5px 12px, var(--b) right top / 12px 1.5px, var(--b) right top / 1.5px 12px,
-              var(--b) left bottom / 12px 1.5px, var(--b) left bottom / 1.5px 12px, var(--b) right bottom / 12px 1.5px, var(--b) right bottom / 1.5px 12px;
-  background-repeat: no-repeat; }
+#pdView .tripout .big { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 14px 12px 14px 14px; border: 1px solid var(--rule); border-radius: var(--rc); background: var(--well); }
 #pdView .bd:empty + .big { margin-top: 0; }
 #pdView #pdTotal { font: 600 40px/1 var(--mono); color: var(--stamp); font-variant-numeric: tabular-nums; letter-spacing: -.035em; white-space: nowrap; }
 #pdView #pdTotal .cur { color: inherit; }
