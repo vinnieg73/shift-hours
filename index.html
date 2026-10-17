@@ -291,6 +291,30 @@ details.help li::marker { color: var(--ink-3); }
 .badge { display: inline-block; max-width: 100%; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 5px; background: var(--well); font: 500 13px/1.35 var(--sans); color: var(--ink-2); }
 .badge.err { border-color: var(--alert); color: var(--alert); }
 
+/* ---------- keys: Punch in / out under the time boxes, Add to day under the readout ---------- */
+.key { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; min-width: 84px; padding: 0 14px; border: 1px solid var(--rule-strong); border-radius: var(--rc); background: var(--raise); color: var(--ink-2); font: 500 13px var(--sans); white-space: nowrap; box-shadow: 0 1px 0 var(--lip); transition: transform .08s, box-shadow .08s, color .15s, border-color .15s, background-color .15s; }
+.key:not(:disabled):active { transform: translateY(1px); box-shadow: 0 0 0 var(--lip); }
+.key:disabled { color: var(--ink-3); border-color: var(--rule); background: transparent; box-shadow: none; cursor: default; }
+.key[data-arm] { border-color: var(--ink); color: var(--ink); background: var(--well); }
+.prow { display: flex; align-items: center; gap: 10px; min-height: 40px; margin-top: 10px; padding-left: var(--lab); }
+/* the punch key: an empty ring off the clock, a pulsing ink dot while on it */
+.pkey::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid currentColor; }
+.pkey.on { background: var(--key-on); border-color: var(--key-on-line); color: var(--ink); font-weight: 600; box-shadow: none; transform: translateY(1px); }
+.pkey.on::before { border: 0; background: var(--stamp); animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+.pstat { min-width: 0; font: 500 13px/1.35 var(--mono); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pstat:empty { display: none; }
+/* the end box while on the clock: its echo reads "now" in ink */
+.well.live .echo { color: var(--stamp); border-color: var(--stamp); font-weight: 600; }
+.addrow { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.addwk::before { content: ""; flex: none; width: 14px; height: 14px; background: currentColor; -webkit-mask: var(--i-add) center / contain no-repeat; mask: var(--i-add) center / contain no-repeat; }
+.addwk.ok { color: var(--stamp); border-color: var(--stamp); }
+.addwk.ok::before { -webkit-mask-image: var(--i-check); mask-image: var(--i-check); animation: pop .32s var(--ease); }
+:root { --i-add: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14' fill='none' stroke='%23000' stroke-width='1.4' stroke-linecap='round'%3E%3Crect x='1.5' y='2.5' width='11' height='10' rx='1.5'/%3E%3Cpath d='M1.5 5.5H12.5M7 7.5V11M5.25 9.25H8.75'/%3E%3C/svg%3E"); }
+/* the day a shift was just added to: a wash that fades */
+.wrow.just .wsum { animation: justIn 1.6s var(--ease); }
+@keyframes justIn { from { background: var(--stamp-wash); } to { background: transparent; } }
+
 /* ---------- punch meter: 24 hour segments, worked time lit in ink ---------- */
 .punch { margin-top: 14px; }
 .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; min-height: 20px; }
@@ -632,7 +656,7 @@ details.help li::marker { color: var(--ink-3); }
 }
 @media (hover: hover) {
   .seg button:not([aria-pressed="true"]):hover { color: var(--ink); }
-  .seg.ap button:not([aria-pressed="true"]):hover, #breakCount button:not([aria-pressed="true"]):hover, .ghost:hover, .copy:not(:disabled):hover, #pdView .mchip:hover, #pdView .choice:hover { border-color: var(--ink-3); color: var(--ink); }
+  .seg.ap button:not([aria-pressed="true"]):hover, #breakCount button:not([aria-pressed="true"]):hover, .ghost:hover, .copy:not(:disabled):hover, .key:not(:disabled):not(.on):hover, #pdView .mchip:hover, #pdView .choice:hover { border-color: var(--ink-3); color: var(--ink); }
   details.help summary:hover, #pdView details.days > summary:hover { color: var(--ink); }
   .wsum:hover .wday, .wsum:hover .wt { color: var(--ink); }
   .wsum:hover::after { border-color: var(--ink); }
@@ -682,6 +706,7 @@ details.help li::marker { color: var(--ink-3); }
         <div class="trow"><label class="label" for="startIn">Start</label><div class="tfield" id="startField"></div></div>
         <div class="trow"><label class="label" for="endIn">End</label><div class="tfield" id="endField"></div></div>
       </div>
+      <div class="prow"><button type="button" class="key pkey" id="punch" aria-pressed="false" aria-describedby="punchStat">Punch in</button><span class="pstat" id="punchStat"></span></div>
       <p class="hint" id="hint">Type <code>915</code> for 9:15, <code>9</code> for 9:00, or <code>9.5</code> for 9:30.</p>
 
       <p class="fielderr" id="fieldErr" role="status" hidden></p>
@@ -724,6 +749,8 @@ details.help li::marker { color: var(--ink-3); }
             <li>Decimal hours = minutes ÷ 60. For example 7:15 is 7.25 hours.</li>
             <li>Typing tips: <span id="helpTip"></span></li>
             <li>The weekly timesheet uses the same clock format and rounding as above. Break is in minutes.</li>
+            <li>Punch in stamps the start time and keeps the end time on the clock until you punch out. Add to day copies the shift into that day's row of the timecard.</li>
+            <li>After the first visit the page opens with no signal. Per diem rates work offline once you have opened that tab.</li>
           </ul>
         </details>
         </details>
@@ -741,6 +768,7 @@ details.help li::marker { color: var(--ink-3); }
       <span id="dec" hidden>0.00</span>
       <p class="words" id="words"></p>
       <div class="badges" id="badges"></div>
+      <div class="addrow"><button type="button" class="key addwk" id="addWeek" disabled>Add to day</button></div>
       <div class="punch" id="dial" role="img" aria-label="24-hour card of the shift">
         <div class="legend" aria-hidden="true">
           <span class="lk"><i class="sw"></i><span class="label">On the clock</span></span>
@@ -851,7 +879,8 @@ details.help li::marker { color: var(--ink-3); }
     br: [ { min: '30', s: { v: '1200', ap: 'pm' }, e: { v: '1230', ap: 'pm' } },
           { min: '', s: { v: '', ap: 'pm' }, e: { v: '', ap: 'pm' } },
           { min: '', s: { v: '', ap: 'pm' }, e: { v: '', ap: 'pm' } } ],
-    week: Array.from({ length: 7 }, () => ({ s: { v: '', ap: 'am' }, e: { v: '', ap: 'pm' }, brk: '' }))
+    week: Array.from({ length: 7 }, () => ({ s: { v: '', ap: 'am' }, e: { v: '', ap: 'pm' }, brk: '' })),
+    live: false, liveAt: 0 // on the clock since Punch in (liveAt: when, ms); the end time follows the clock while live
   };
   const KEY = 'shift-hours-v1';
   let S, last = null; // last: the stored text this tab last read or wrote
@@ -875,6 +904,7 @@ details.help li::marker { color: var(--ink-3); }
       round: [0, 5, 6, 15].includes(+raw.round) ? +raw.round : 0,
       roundBreaks: (raw.roundBreaks === 0 || raw.roundBreaks === '0') ? 0 : 1,
       start: fld(raw.start, D.start), end: fld(raw.end, D.end),
+      liveAt: +raw.liveAt > 0 ? +raw.liveAt : 0, live: raw.live === true && +raw.liveAt > 0,
       br: D.br.map((d, i) => { const b = obj(br[i]) ? br[i] : {}; return { min: str(b.min), s: fld(b.s, d.s), e: fld(b.e, d.e) }; }),
       week: D.week.map((d, i) => { const w = obj(wk[i]) ? wk[i] : {}; return { s: obj(w.s) ? fld(w.s, d.s) : { ...d.s }, e: obj(w.e) ? fld(w.e, d.e) : { ...d.e }, brk: str(w.brk) }; })
     };
@@ -944,6 +974,13 @@ details.help li::marker { color: var(--ink-3); }
     if (fmt === '24') return String(h).padStart(2, '0') + ':' + mm;
     return ((h % 12) || 12) + ':' + mm + (h < 12 ? ' AM' : ' PM');
   }
+  // write the clock's time into a field, in the current format (8:45 -> "845" am, or "0845")
+  function stampNow(f) {
+    const d = new Date(), h = d.getHours(), mm = String(d.getMinutes()).padStart(2, '0');
+    if (S.fmt === '24') f.v = String(h).padStart(2, '0') + mm; else { f.v = ((h % 12) || 12) + mm; f.ap = h < 12 ? 'am' : 'pm'; }
+    moved.delete(f);
+  }
+  const clockOf = f => { const p = parse(f.v, S.fmt); return p && !p.err ? clock(toMin(p, f.ap, S.fmt), S.fmt) : ''; };
   // the end of a full day: 24:00, not 0:00
   const endClock = (min, fmt, full) => full ? (fmt === '24' ? '24:00' : '12:00 AM (next day)') : clock(min, fmt);
   const sameNote = (a, b) => (a % 1440 === b % 1440 ? 'Start and end are the same time' : 'Rounding made start and end the same') + ', so 0 hours';
@@ -1075,7 +1112,7 @@ details.help li::marker { color: var(--ink-3); }
     inp.className = 'tin'; inp.id = id; inp.type = 'text'; inp.inputMode = 'decimal'; inp.setAttribute('enterkeyhint', 'next');
     if (descId) inp.setAttribute('aria-describedby', descId);
     inp.placeholder = S.fmt === '24' ? '1730' : '915'; inp.value = f.v; inp.setAttribute('aria-label', label);
-    inp.addEventListener('input', () => { f.v = inp.value; moved.delete(f); seen.delete(id); update(); });
+    inp.addEventListener('input', () => { f.v = inp.value; moved.delete(f); seen.delete(id); handEdit(f); update(); });
     inp.addEventListener('blur', () => { seen.add(id); update(); });
     wrap.appendChild(inp);
     if (S.fmt === '12') {
@@ -1085,7 +1122,7 @@ details.help li::marker { color: var(--ink-3); }
         const btn = document.createElement('button');
         btn.type = 'button'; btn.id = id + '-' + v; btn.textContent = v.toUpperCase();
         btn.setAttribute('aria-pressed', String(f.ap === v));
-        btn.addEventListener('click', () => { f.ap = v; seg.dataset.pos = v; [...seg.children].forEach(c => c.setAttribute('aria-pressed', String(c === btn))); update(); });
+        btn.addEventListener('click', () => { f.ap = v; seg.dataset.pos = v; [...seg.children].forEach(c => c.setAttribute('aria-pressed', String(c === btn))); handEdit(f); update(); });
         seg.appendChild(btn);
       });
       wrap.appendChild(seg);
@@ -1306,9 +1343,40 @@ details.help li::marker { color: var(--ink-3); }
     $('nowTxt').textContent = 'Now ' + clock(m, S.fmt);
     $('nowLine').style.left = x;
   }
-  let nowT = setInterval(nowMark, 30000);
+  // ---- punch clock: while live, the end time follows the clock (every half minute, and when the page comes back) ----
+  let liveNote = '';
+  // editing the end time by hand means "that is my end time", so the clock lets go of it
+  function handEdit(f) { if (f === S.end && S.live) S.live = false; if (f === S.start || f === S.end) liveNote = ''; }
+  function setField(id, f) {
+    const inp = $(id); if (!inp) return;
+    if (inp.value !== f.v) inp.value = f.v;
+    const seg = inp.closest('.tfield') && inp.closest('.tfield').querySelector('.seg.ap');
+    if (seg) { seg.dataset.pos = f.ap; [...seg.children].forEach(c => c.setAttribute('aria-pressed', String(c.id === id + '-' + f.ap))); }
+  }
+  function tickLive() {
+    if (!S.live) return;
+    if (Date.now() - S.liveAt > 24 * 3600e3) { S.live = false; liveNote = 'Punched in more than a day ago, so the clock let go of the end time'; update(); return; }
+    const was = S.end.v + S.end.ap;
+    stampNow(S.end);
+    if (S.end.v + S.end.ap !== was) { setField('endIn', S.end); update(); }
+  }
+  function renderPunch() {
+    const b = $('punch'), st = $('punchStat'), live = S.live;
+    const txt = live ? 'Punch out' : 'Punch in';
+    if (b.textContent !== txt) b.textContent = txt;
+    b.classList.toggle('on', live); b.setAttribute('aria-pressed', String(live));
+    const since = live ? clockOf(S.start) : '';
+    const stt = since ? 'Since ' + since : '';
+    if (st.textContent !== stt) st.textContent = stt;
+    const w = $('endIn') && $('endIn').closest('.well'); if (w) w.classList.toggle('live', live);
+    const e = $('endInEcho'); if (e && live && e.textContent !== 'now') e.textContent = 'now';
+  }
+  // which day of the week a shift belongs to: the day it was punched in, else today
+  const addDay = () => { const t = S.liveAt && Date.now() - S.liveAt < 36 * 3600e3 ? new Date(S.liveAt) : new Date(); return (t.getDay() + 6) % 7; };
+  const tick = () => { nowMark(); tickLive(); };
+  let nowT = setInterval(tick, 30000);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) { clearInterval(nowT); flush(); } else { syncFromStorage(); nowMark(); clearInterval(nowT); nowT = setInterval(nowMark, 30000); }
+    if (document.hidden) { clearInterval(nowT); flush(); } else { syncFromStorage(); tick(); clearInterval(nowT); nowT = setInterval(tick, 30000); }
   });
   const seen = new Set(['startIn', 'endIn', 'bmin0', 'bmin1', 'bmin2', 'bs0', 'bs1', 'bs2', 'be0', 'be1', 'be2', ...[0, 1, 2, 3, 4, 5, 6].flatMap(i => Object.values(weekIds(i)))]);
   const idOf = k => k === 'start' ? 'startIn' : k === 'end' ? 'endIn' : /^b\d/.test(k) ? 'bmin' + k.slice(1) : k;
@@ -1333,7 +1401,7 @@ details.help li::marker { color: var(--ink-3); }
   }
   window.addEventListener('storage', e => { if (e.key === KEY && e.storageArea === localStorage) adopt(e.newValue); });
   const syncFromStorage = () => { try { adopt(localStorage.getItem(KEY)); } catch (e) {} };
-  window.addEventListener('pageshow', e => { if (e.persisted) syncFromStorage(); });
+  window.addEventListener('pageshow', e => { if (e.persisted) { syncFromStorage(); tick(); } });
 
   // ---- render ----
   function update() {
@@ -1370,12 +1438,18 @@ details.help li::marker { color: var(--ink-3); }
     // break field errors show under their own row; the badge says the total is paused and why
     if (r.block) add('No total yet: ' + r.block.msg, r.block.bad ? 'err' : 'b');
     if (vis.total) add(vis.total, 'err');
+    if (liveNote) add(liveNote, 'b');
     r.decs.forEach(n => add(n, 'b'));
     if (r.total != null) {
       if (r.overnight) add('Ends next day');
       r.notes.forEach(n => add(n, 'b'));
     }
     $('copyDec').disabled = $('copyHm').disabled = !ok;
+    // Add to day: today's row (or the day you punched in); off while the clock still holds the end time
+    { const ab = $('addWeek'), ai = addDay(), label = 'Add to ' + DAYS[ai];
+      if (!ab.dataset.arm && !ab.classList.contains('ok') && ab.textContent !== label) ab.textContent = label;
+      ab.disabled = !ok || S.live;
+      ab.setAttribute('aria-label', (S.live ? 'Punch out first, then add this shift to ' : 'Add this shift to ') + FULLDAY[ai] + ' on the timecard'); }
     announce(ok ? (t / 60).toFixed(2) + ' decimal hours, ' + plural(Math.floor(t / 60), 'hour') + ' ' + plural(t % 60, 'minute') : r.block ? 'No total yet: ' + r.block.msg : (Object.values(vis)[0] || ''));
     // punch strip
     drawStrip(r.a != null ? r : null); nowMark();
@@ -1393,6 +1467,7 @@ details.help li::marker { color: var(--ink-3); }
       if (t === String(f.v).trim()) t = '';
       if (el.textContent !== t) el.textContent = t;
     });
+    renderPunch();
   }
 
   // ---- controls ----
@@ -1470,7 +1545,33 @@ details.help li::marker { color: var(--ink-3); }
   $('clear').addEventListener('click', () => {
     S.start.v = ''; S.end.v = ''; S.start.ap = 'am'; S.end.ap = 'pm';
     S.br.forEach(b => { b.min = ''; b.s.v = ''; b.e.v = ''; });
+    S.live = false; S.liveAt = 0; liveNote = '';
     build(); $('startIn').focus();
+  });
+  // Punch in: stamp the start with the clock's time and keep the end on the clock; Punch out: stamp the end and let go
+  $('punch').addEventListener('click', () => {
+    liveNote = '';
+    if (S.live) { stampNow(S.end); S.live = false; build(); announce('Punched out at ' + clockOf(S.end) + '. ' + $('hm').textContent.replace('hrs', ' hours'), true); }
+    else { S.live = true; S.liveAt = Date.now(); stampNow(S.start); stampNow(S.end); build(); announce('Punched in at ' + clockOf(S.start) + '. The end time follows the clock until you punch out.', true); }
+  });
+  // Add to day: copy the shift (start, end, deducted break minutes) into that day's timecard row; a filled day asks for a second tap
+  $('addWeek').addEventListener('click', () => {
+    const b = $('addWeek'), r = compute();
+    if (S.live || r.total == null || r.total < 0 || r.block) return;
+    const i = addDay(), D = S.week[i];
+    const filled = [D.s.v, D.e.v, D.brk].some(v => String(v || '').trim());
+    if (filled && !b.dataset.arm) {
+      b.dataset.arm = '1'; b.textContent = 'Replace ' + DAYS[i] + '?';
+      clearTimeout(b._t); b._t = setTimeout(() => { delete b.dataset.arm; update(); }, 3000);
+      return;
+    }
+    clearTimeout(b._t); delete b.dataset.arm;
+    D.s = { v: S.start.v, ap: S.start.ap }; D.e = { v: S.end.v, ap: S.end.ap }; D.brk = r.brk ? String(r.brk) : '';
+    openDay = -1; build();
+    const row = $('wr' + i); if (row) { row.classList.remove('just'); void row.offsetWidth; row.classList.add('just'); }
+    b.classList.add('ok'); b.textContent = 'Added to ' + DAYS[i];
+    b._t = setTimeout(() => { b.classList.remove('ok'); update(); }, 1600);
+    announce('Added to ' + FULLDAY[i] + ': ' + (r.total / 60).toFixed(2) + ' hours', true);
   });
   let prevBig = '';
   function setBig(txt, ok) {
@@ -1505,9 +1606,9 @@ details.help li::marker { color: var(--ink-3); }
   function selectText(id) { const el = $(id), r = document.createRange(), u = el.querySelector('small'); r.selectNodeContents(el); if (u) r.setEndBefore(u); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
   copier('copyDec', 'dec'); copier('copyHm', 'hm2'); copier('copyWeek', 'wDec');
 
-  window.__hours = { parse, toMin, roundMin, span, compute, computeDay, renderWeek, normalise, get S() { return S; } };
+  window.__hours = { parse, toMin, roundMin, span, compute, computeDay, renderWeek, normalise, tickLive, get S() { return S; } };
   // if saved state breaks the page, keep a copy of it (instead of deleting it) and start fresh
-  try { build(); } catch (e) {
+  try { build(); tickLive(); } catch (e) {
     console.error(e);
     try { const old = localStorage.getItem(KEY); if (old) localStorage.setItem(KEY + '-backup', old); } catch (e2) {}
     S = normalise(null);
@@ -1884,6 +1985,8 @@ details.help li::marker { color: var(--ink-3); }
   window.addEventListener('hashchange', () => { const h = fromHash(); if (h) setView(h); });
 })();
 </script>
+<!-- offline: sw.js keeps a copy of the page so it opens with no signal after the first visit -->
+<script>if ('serviceWorker' in navigator) addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });</script>
 <!-- Cloudflare Web Analytics: cookieless visitor counter -->
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "91e5ef0912e44520a68891d43e8f59da"}'></script>
 

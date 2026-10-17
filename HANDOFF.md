@@ -1,6 +1,6 @@
 # HANDOFF: Shift Hours
 
-Last updated: 2026-10-17 (Graphite polish pass)
+Last updated: 2026-10-17 (punch clock + offline)
 
 ## What it is
 
@@ -10,6 +10,8 @@ It also has a **Per diem** view (GSA lodging and M&IE rates for any U.S. city), 
 
 ## Status
 
+- **Punch clock + Add to day (2026-10-17, thread "Any other ideas for shift hours app?").** A `Punch in` key (`#punch`, class `key pkey`) under Start/End stamps the start with the clock's time and keeps the end on the clock: `S.live` + `S.liveAt` (ms) are saved in `shift-hours-v1`; `tickLive()` re-stamps the end every 30 s (shared `tick()` with the Now caret), on return from the background, on back/forward restore and on load, so a reopened page catches up at once. While live the key reads `Punch out` (pressed look, pulsing ink dot), `#punchStat` says "Since 8:45 AM", the end well has class `live` and its echo reads "now". Typing or flipping AM/PM on the end box by hand lets go of the clock; editing the start does not. More than 24 h live stops the clock with a badge. Clear resets both. `Add to Fri` (`#addWeek`, under the badges) copies start, end and the deducted break minutes (`r.brk`, so the row's total matches the readout) into that day's row, folds it and flashes it (`.wrow.just`); the day is the one punched in (within 36 h) or today; a filled day asks "Replace Fri?" (two taps, 3 s). It is off while live and while there is no total. Everything else in the Hours view is unchanged. Tests: /mnt/project-files/shift-hours-redesign/punch/tools/punch.test.js (fake clock; 36 checks x phone/desktop x light/dark) plus the polish smoke test.
+- **Offline (2026-10-17).** `sw.js` (registered at the end of `index.html`) saves the page, manifest and icons on install and tries to save the Google Fonts CSS and font files too. The page is network-first (4 s, then the saved copy) and re-saved on every online load, so a new deploy still shows up on the next visit with no cache bump; fonts and `data/perdiem-fy2027.json` are served from the cache when present and refreshed in the background (per diem works offline once that tab has been opened online). The Cloudflare beacon is left alone. Bump `V` in `sw.js` only when `SHELL` changes (e.g. a renamed icon or data file). A failed per diem load offline still shows the existing "Check your connection" message.
 - **Polish pass (2026-10-17).** (1) Weekly timecard folds: a finished day is one summary button (`#wd0`..`#wd6`, rows `#wr0`..`#wr6` with class `m-fold` / `m-edit` / `m-add`, `aria-expanded`); one day open at a time; an unfinished day stays open with its red note; empty days are dashed "+ Sat" add keys. All input ids unchanged, storage format unchanged. (2) Desktop capped at 960px with two even columns and fixed week field widths. (3) First visit (no saved state) starts blank with faint 900/530 placeholders, the typing hint and a CSS-drawn faint 0.00 (`#hm.idle`); the old 9:00-5:30 demo shift is gone. (4) Selected keys use `--key-on` / `--key-on-line` (softer in dark mode). (5) og/twitter meta + `og.png` (1200x630), `manifest.webmanifest` (standalone), `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, apple-mobile-web-app meta, side safe-area insets. Per diem stat and trip boxes have no corner brackets. Enter in a day's last box folds that day. Test scripts (smoke updated for folding days) live in the cloud at /mnt/project-files/shift-hours-redesign/polish/tools/.
 - **Graphite Tool look (2026-10-17, modernizes Timecard; Vinnie's pick of three).** Same warm palette and Carbon ink (INK block unchanged), restyled as a sleek pro tool: one solid panel per view, 1px hairlines, 6px control / 8px panel corners, Inter labels in sentence case plus small Chivo Mono micro-labels (no all-caps), keycap AM/PM, Breaks and Copy keys with a 1px solid lip, sliding-thumb tracks for Hours/Per diem, 12/24 and settings. Decimal hours sit in a recessed `.readout` panel (wraps `.big` + `.hmline`); Vinnie rejected the ink corner brackets on it, so it is a plain hairline panel. Punch strip is a 24-segment meter with hour ticks (`.ticks`). Motion: digits drop in on change, thumbs slide, Copy flips to a check; all off under prefers-reduced-motion. Dark is warm graphite (#121110 page, #1A1917 panel). Header mark is a clock face; favicon and touch icon are the same mark on a graphite tile. Variants and notes: /mnt/project-files/shift-hours-redesign/modern/ (cloud only). The Timecard notes below still describe the structure, ink rules and per diem; where they mention boxes, caps, IBM Plex Sans or the 4px radius rule, Graphite replaced them.
 - **Timecard look (2026-10-16, replaces Liquid Glass).** The page reads like paper forms: a manila day card for the calculator, a ruled weekly timecard, and a travel voucher with a perforated trip stub for per diem. Labels are printed caps in IBM Plex Sans, every typed or computed number is Chivo Mono, chosen for its plain zero with no dot (Google Fonts, with preconnect and system fallbacks). Decimal hours are the main result, stamped in ink inside a straight double frame (Vinnie asked for no tilt), with h:mm underneath; both have Copy.
@@ -60,7 +62,7 @@ It also has a **Per diem** view (GSA lodging and M&IE rates for any U.S. city), 
 
 1. Check visits appear in Cloudflare Web Analytics after deploy.
 2. Watch for feedback on the decimal change (see gotchas).
-3. Possible: an "Add to week" button that copies the calculator's result into today's row.
+3. (Done 2026-10-17: Add to day.) Possible next: pay estimate with overtime, a "when can I leave" mode.
 
 ## Open decisions
 
@@ -71,6 +73,8 @@ It also has a **Per diem** view (GSA lodging and M&IE rates for any U.S. city), 
 
 ## Gotchas
 
+- **Class names:** the punch strip container is `.punch` (`#dial`); the Punch in/out key is `.pkey`. Giving the key the class `punch` painted a stray ring above the strip.
+- **sw.js** must stay at the site root (scope `/`). Playwright with a fake clock (`page.clock.install`) freezes the 250 ms save debounce: call `clock.runFor(400)` before reading `localStorage` in tests.
 - **Timecard CSS:** keep every colour a token. The ink lives only in the INK block at the top of the stylesheet; if a new element needs the accent, use `var(--stamp)` / `var(--stamp-wash)` (or `currentColor` in SVG). The PNG favicon and apple-touch-icon (data URIs in `<head>`) are the one place the ink is baked in (Carbon #1F1B16 since 2026-10-16); regenerate them if the ink changes.
 - The `pd-core` lookup block and `data/` were not touched by the reskin (byte-identical to the per diem merge).
 
