@@ -905,10 +905,9 @@ details.help li::marker { color: var(--ink-3); }
           <li>Lodging is a cap per night, and it can change by month. You're paid what the room cost, up to the cap. Taxes are claimed separately.</li>
           <li>M&amp;IE is the full daily rate on middle days and 75% on the day you leave and the day you return.</li>
           <li>If a meal was given to you (at a conference, say), its amount comes off that day. Meals on a plane or a free hotel breakfast don't count.</li>
-          <li>GSA sets rates by county. A ZIP gives GSA's exact answer; a city that crosses into another rate area lets you pick.</li>
-          <li>Places not on GSA's list get the standard rate. GSA's year runs Oct 1 to Sep 30.</li>
-          <li>Covers the 48 states and DC. Alaska, Hawaii and U.S. territories use Defense Department rates.</li>
-          <li class="src">Rates: <a href="https://www.gsa.gov/travel/plan-a-trip/per-diem-rates" target="_blank" rel="noopener">GSA per diem files</a>, <span id="pdFyNote">FY 2027</span>. Place names: <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (CC BY 4.0) and the U.S. Census Bureau. Check with your employer; their policy may differ.</li>
+          <li>In the 48 states and DC, GSA sets rates by county. A ZIP gives GSA's exact answer; a city that crosses into another rate area lets you pick. Places not on GSA's list get the standard rate.</li>
+          <li>Alaska, Hawaii, Puerto Rico, Guam, the U.S. Virgin Islands, American Samoa and the Northern Mariana Islands use the Defense Department's rates, which are set by town or island and can change by season. The rate year runs Oct 1 to Sep 30.</li>
+          <li class="src">Rates: <a href="https://www.gsa.gov/travel/plan-a-trip/per-diem-rates" target="_blank" rel="noopener">GSA per diem files</a> and the <a href="https://www.travel.dod.mil/Travel-Transportation-Rates/Per-Diem/Per-Diem-Rate-Lookup/" target="_blank" rel="noopener">Defense Department's OCONUS file</a>, <span id="pdFyNote">FY 2027</span>. Place names: <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (CC BY 4.0) and the U.S. Census Bureau. Check with your employer; their policy may differ.</li>
         </ul>
       </details>
     </section>
@@ -1670,6 +1669,7 @@ details.help li::marker { color: var(--ink-3); }
     const NAMES = { AL: 'Alabama', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware', DC: 'District of Columbia', FL: 'Florida', GA: 'Georgia', ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
       AK: 'Alaska', HI: 'Hawaii', PR: 'Puerto Rico', GU: 'Guam', VI: 'U.S. Virgin Islands', AS: 'American Samoa', MP: 'Northern Mariana Islands', MH: 'Marshall Islands', FM: 'Micronesia', PW: 'Palau', MIL: 'Military mail (APO/FPO)' };
     const CONUS = new Set('AL AZ AR CA CO CT DE DC FL GA ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' '));
+    const DOD = new Set('AK HI PR GU VI AS MP'.split(' ')); // Defense Department rate areas, present when data.oconus is set
     // same rules as key() in scripts/build_perdiem.py: no accents or punctuation, Saint/Fort/Mount spelled out
     function key(s) {
       return String(s).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/&/g, ' and ')
@@ -1700,7 +1700,20 @@ details.help li::marker { color: var(--ink-3); }
       });
       return P.length;
     }
-    const outside = (st) => !CONUS.has(st);
+    const outside = (st) => !CONUS.has(st) && !(DOD.has(st) && D && D.oconus);
+    const isDod = (a) => !!(D && D.areas[a] && D.areas[a][5] && D.areas[a][5].dod);
+    // rate in force on a date: DoD seasons can change mid-month, so the trip total asks day by day
+    function rateOn(a, d) {
+      const A = D.areas[a], X = A[5], mi = (d.getMonth() + 3) % 12;
+      if (X && X.seasons) {
+        const md = (d.getMonth() + 1) * 100 + d.getDate();
+        for (const sn of X.seasons) {
+          const a1 = +sn[0].replace('/', ''), b1 = +sn[1].replace('/', '');
+          if (a1 <= b1 ? md >= a1 && md <= b1 : md >= a1 || md <= b1) return { lodging: sn[2], mie: sn[3] };
+        }
+      }
+      return { lodging: A[4][mi], mie: X && X.mie ? X.mie[mi] : A[3] };
+    }
     function choicesOf(spec, st) {
       if (outside(st)) return [];
       if (!spec) return [{ a: 0, lab: '' }];
@@ -1766,7 +1779,7 @@ details.help li::marker { color: var(--ink-3); }
       }
       return r;
     }
-    return { index, search, zip, findPlace, parseQ, key, NAMES, CONUS, get data() { return D; }, get places() { return P; } };
+    return { index, search, zip, findPlace, parseQ, key, NAMES, CONUS, DOD, isDod, rateOn, get data() { return D; }, get places() { return P; } };
   })();
   /* pd-core:end */
 
@@ -1830,7 +1843,7 @@ details.help li::marker { color: var(--ink-3); }
     document.body.dataset.view = v;
     $('hrView').hidden = v !== 'hr'; $('pdView').hidden = v !== 'pd';
     viewSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
-    if (sub) sub.textContent = v === 'pd' ? 'GSA hotel and meal rates for any U.S. city.' : subHr;
+    if (sub) sub.textContent = v === 'pd' ? 'Hotel and meal rates for any U.S. city.' : subHr;
     if (!keep) {
       try { localStorage.setItem(VKEY, v); } catch (e) {}
       // a #perdiem / #hours link picked the first view; after a tap, the remembered view wins
@@ -1846,7 +1859,7 @@ details.help li::marker { color: var(--ink-3); }
   let hits = [], act = 0;
   function closeSug() { sug.hidden = true; q.setAttribute('aria-expanded', 'false'); q.removeAttribute('aria-activedescendant'); }
   function sumLine(h) {
-    if (h.out) return 'Defense Dept. rates';
+    if (h.out) return 'Not in this lookup';
     if (h.choices.length > 1) return h.choices.length + ' rate areas';
     const a = D.areas[h.choices[0].a];
     return h.choices[0].a === 0 ? 'Standard rate' : a[0];
@@ -1857,7 +1870,7 @@ details.help li::marker { color: var(--ink-3); }
     if (!t) { hits = []; closeSug(); return; }
     if (!D) {
       hits = [];
-      sug.innerHTML = '<li class="info" role="presentation">' + (failed ? 'Rates didn’t load. Check your connection.' : 'Loading GSA rates…') + '</li>';
+      sug.innerHTML = '<li class="info" role="presentation">' + (failed ? 'Rates didn’t load. Check your connection.' : 'Loading rates…') + '</li>';
       sug.hidden = false; q.setAttribute('aria-expanded', 'true'); return;
     }
     hits = PDcore.search(t, 8); act = 0;
@@ -1901,7 +1914,7 @@ details.help li::marker { color: var(--ink-3); }
     const empty = $('pdEmpty'), box = $('pdRates');
     if (!D) {
       box.hidden = true; empty.hidden = false; empty.classList.toggle('err', failed);
-      empty.innerHTML = failed ? 'The GSA rates didn’t load. Check your connection and try again.<button type="button" id="pdRetry">Try again</button>' : 'Loading GSA rates…';
+      empty.innerHTML = failed ? 'The rates didn’t load. Check your connection and try again.<button type="button" id="pdRetry">Try again</button>' : 'Loading rates…';
       if (failed) $('pdRetry').addEventListener('click', ensureData);
       return;
     }
@@ -1913,8 +1926,8 @@ details.help li::marker { color: var(--ink-3); }
       $('pdCty').textContent = '';
       chBox.hidden = false; nums.hidden = true;
       const nm = PDcore.NAMES[cur.st] || 'this place';
-      chBox.innerHTML = '<p>' + esc(nm) + ' isn’t covered by GSA. Rates for Alaska, Hawaii and U.S. territories are set by the Defense Department: <a href="' + DOD + '" target="_blank" rel="noopener">look them up on travel.dod.mil</a>.</p>';
-      $('pdStatus').textContent = nm + ': rates come from the Defense Department, not GSA';
+      chBox.innerHTML = '<p>' + esc(nm) + ' isn’t in this lookup. Its rates are set by the Defense Department: <a href="' + DOD + '" target="_blank" rel="noopener">look them up on travel.dod.mil</a>.</p>';
+      $('pdStatus').textContent = nm + ': not in this lookup';
       return;
     }
     const a = area();
@@ -1930,8 +1943,8 @@ details.help li::marker { color: var(--ink-3); }
     } else { chBox.hidden = true; chBox.innerHTML = ''; }
     if (a == null) { nums.hidden = true; $('pdCty').textContent = ''; $('pdStatus').textContent = cur.label + ': pick a rate area'; return; }
     nums.hidden = false;
-    const A = D.areas[a], L = A[4], m = A[3], sp = D.mie[m];
-    $('pdCty').textContent = a === 0 ? 'Standard rate: this county isn’t on GSA’s list' : 'Rate area: ' + A[0] + ', ' + A[1] + ' · ' + A[2];
+    const A = D.areas[a], L = A[4], X = A[5] || null, dod = !!(X && X.dod), mm = X && X.mie ? X.mie : null, m = mm ? mm[ni] : A[3], sp = D.mie[m];
+    $('pdCty').textContent = a === 0 ? 'Standard rate: this county isn’t on GSA’s list' : dod ? 'Defense Department rate area: ' + A[0] + ', ' + A[1] : 'Rate area: ' + A[0] + ', ' + A[1] + ' · ' + A[2];
     $('pdLk').textContent = 'Lodging in ' + D.months[ni];
     $('pdL').innerHTML = '<span class="cur">$</span>' + L[ni];
     $('pdM').innerHTML = '<span class="cur">$</span>' + m;
@@ -1942,6 +1955,13 @@ details.help li::marker { color: var(--ink-3); }
       '<div class="wide"><dt>Full day</dt><dd>$' + m + '</dd></div><div class="wide travel"><dt>First &amp; last day (75%)</dt><dd>' + whole(m * 0.75) + '</dd></div>';
     const b = [];
     if (a === 0) b.push('<span class="badge">Standard rate</span>');
+    if (dod) b.push('<span class="badge">Defense Department rate</span>');
+    if (mm) { const lo2 = Math.min(...mm), hi2 = Math.max(...mm); if (lo2 !== hi2) b.push('<span class="badge">M&amp;IE changes with the season: $' + lo2 + ' to $' + hi2 + '</span>'); }
+    if (X && X.seasons) {
+      // a season that starts mid-month: the grid shows the rate on the 1st, so name the change
+      const mids = X.seasons.filter(sn => !/\/01$/.test(sn[0])).map(sn => 'from ' + MON[+sn[0].slice(0, 2) - 1] + ' ' + (+sn[0].slice(3)) + ' $' + sn[2] + ' a night' + (mm ? ', M&amp;IE $' + sn[3] : ''));
+      if (mids.length) b.push('<span class="badge">Season changes mid-month: ' + mids.join('; ') + '</span>');
+    }
     if (cur.inferred) b.push('<span class="badge">ZIP not in GSA’s list: rate from the same area</span>');
     if (new Date() < parseD(D.start)) b.push('<span class="badge">FY ' + D.fy + ' rates start ' + fmtD(parseD(D.start), 1) + '</span>');
     if (new Date() > new Date(parseD(D.end).getTime() + 864e5)) b.push('<span class="badge err">FY ' + D.fy + ' rates; newer ones may apply</span>');
@@ -1958,21 +1978,21 @@ details.help li::marker { color: var(--ink-3); }
     if (b < a) return { err: 'The return day is before the day you leave.', bad: true };
     if (a < parseD(D.start) || b > parseD(D.end)) return { err: 'This uses FY ' + D.fy + ' rates, so dates must fall between ' + fmtD(parseD(D.start), 1) + ' and ' + fmtD(parseD(D.end), 1) + '.' };
     const ai = area();
-    if (ai == null) return { err: cur && cur.out ? 'Trip totals cover the 48 states and DC only.' : cur ? 'Pick a rate area above first.' : 'Pick a place above first.' };
+    if (ai == null) return { err: cur && cur.out ? 'There’s no trip total for a place that isn’t in this lookup.' : cur ? 'Pick a rate area above first.' : 'Pick a place above first.' };
     const n = Math.round((b - a) / 864e5) + 1;
     if (n > 30) return { err: 'Trips longer than 30 days often use different rules. Try a shorter trip.' };
-    const A = D.areas[ai], m = A[3], split = D.mie[m], days = [];
+    const days = [];
     for (let i = 0; i < n; i++) {
-      const d = new Date(a.getFullYear(), a.getMonth(), a.getDate() + i), k = iso(d);
-      const night = i < n - 1, hotel = night ? A[4][fyIdx(d)] : 0;
+      const d = new Date(a.getFullYear(), a.getMonth(), a.getDate() + i), k = iso(d), rt = PDcore.rateOn(ai, d), m = rt.mie, split = D.mie[m];
+      const night = i < n - 1, hotel = night ? rt.lodging : 0;
       const travel = n === 1 || i === 0 || i === n - 1, base = travel ? m * 0.75 : m;
       const g = Array.isArray(S.given[k]) ? S.given[k] : [false, false, false];
       const given = [0, 1, 2].map(j => !!g[j]);
       const off = given.reduce((s, x, j) => s + (x ? split[j] : 0), 0);
-      days.push({ d, k, night, hotel, travel, base, given, off, mie: Math.max(0, base - off) });
+      days.push({ d, k, night, hotel, travel, base, given, off, mie: Math.max(0, base - off), m });
     }
-    const sum = (f) => days.reduce((s, x) => s + f(x), 0);
-    return { n, nights: n - 1, m, days, hotel: sum(x => x.hotel), full: days.filter(x => !x.travel).length, travelN: days.filter(x => x.travel).length,
+    const sum = (f) => days.reduce((s, x) => s + f(x), 0), ms = [...new Set(days.map(x => x.m))];
+    return { n, nights: n - 1, m: ms.length === 1 ? ms[0] : null, days, dod: PDcore.isDod(ai), hotel: sum(x => x.hotel), full: days.filter(x => !x.travel).length, travelN: days.filter(x => x.travel).length,
       fullAmt: sum(x => x.travel ? 0 : x.base), travelAmt: sum(x => x.travel ? x.base : 0), off: sum(x => Math.min(x.off, x.base)), total: sum(x => x.hotel + x.mie) };
   }
   function fmtD(d, long) { return long ? MON[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() : DOW[d.getDay()] + ' ' + MON[d.getMonth()] + ' ' + d.getDate(); }
@@ -1988,9 +2008,9 @@ details.help li::marker { color: var(--ink-3); }
     const t = money(r.total).split('.');
     $('pdTotal').innerHTML = '<span class="cur">$</span>' + t[0] + '<span class="cts">.' + t[1] + '</span>';
     const rows = [];
-    if (r.nights) { const c = [...new Set(r.days.filter(x => x.night).map(x => x.hotel))]; rows.push(['Lodging', r.nights + ' night' + (r.nights > 1 ? 's' : '') + (c.length === 1 ? ' × $' + c[0] : ', by month'), usd(r.hotel)]); }
-    if (r.full) rows.push(['M&IE', r.full + ' full day' + (r.full > 1 ? 's' : '') + ' × $' + r.m, usd(r.fullAmt)]);
-    rows.push(['Travel days', r.travelN + ' × ' + whole(r.m * 0.75) + ' (75%)', usd(r.travelAmt)]);
+    if (r.nights) { const c = [...new Set(r.days.filter(x => x.night).map(x => x.hotel))]; rows.push(['Lodging', r.nights + ' night' + (r.nights > 1 ? 's' : '') + (c.length === 1 ? ' × $' + c[0] : r.dod ? ', by season' : ', by month'), usd(r.hotel)]); }
+    if (r.full) rows.push(['M&IE', r.full + ' full day' + (r.full > 1 ? 's' : '') + (r.m != null ? ' × $' + r.m : ', by season'), usd(r.fullAmt)]);
+    rows.push(['Travel days', r.travelN + ' × ' + (r.m != null ? whole(r.m * 0.75) : '75%') + (r.m != null ? ' (75%)' : ', by season'), usd(r.travelAmt)]);
     const gl = {}; r.days.forEach(x => x.given.forEach((g, j) => { if (g) gl[MEALN[j]] = (gl[MEALN[j]] || 0) + 1; }));
     if (Object.keys(gl).length) rows.push(['Meals given', Object.keys(gl).map(k => gl[k] + ' ' + k).join(', '), '−' + usd(r.off), 'minus']);
     $('pdBreak').innerHTML = rows.map(x => '<dt>' + x[0] + '</dt><dd>' + x[1] + '</dd><dd class="amt' + (x[3] ? ' ' + x[3] : '') + '">' + x[2] + '</dd>').join('');
