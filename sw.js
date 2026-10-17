@@ -6,8 +6,8 @@
    background. Everything else (the visitor counter) goes straight to the network.
    V names the cache; bump it when SHELL changes. A new index.html needs no bump: the browser
    re-checks this file on every visit and the page is re-saved on every online load. */
-const V = 'shift-hours-2026-10-17';
-const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+const V = 'shift-hours-2026-10-17b';
+const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'qr.js'];
 const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Chivo+Mono:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap';
 const isFont = u => u.hostname === 'fonts.googleapis.com' || u.hostname === 'fonts.gstatic.com';
 
