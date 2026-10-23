@@ -931,7 +931,10 @@ details.help li::marker { color: var(--ink-3); }
     outAt: 0 // when Punch out stamped the end (ms), so a night when the clocks change counts the real time
   };
   const KEY = 'shift-hours-v1';
-  let S, last = null; // last: the stored text this tab last read or wrote
+  // the clock-change fields (outAt, week[i].adj) also live in a side key that a page from before 2026-10-23 never
+  // touches: such a page drops them when it re-saves KEY, and they are put back where the day still matches
+  const XKEY = 'shift-hours-v1x';
+  let S, last = null, lastX = null, lastRead = null; // lastRead: the stored text adopt() last took // last: the stored text this tab last read or wrote
   try { last = localStorage.getItem(KEY); S = JSON.parse(last) || null; } catch (e) { S = null; }
   function normalise(raw) {
     const D = JSON.parse(JSON.stringify(DEFAULT));
@@ -963,6 +966,16 @@ details.help li::marker { color: var(--ink-3); }
   const fresh = S == null;
   S = normalise(S);
   if (fresh) { S.start.v = ''; S.end.v = ''; }
+  const sig = d => [d.s.v, d.s.ap, d.e.v, d.e.ap, d.brk].join('|');
+  // put back outAt / adj an older page dropped: outAt for the same punch (liveAt), adj for a day whose times are unchanged
+  function reapply(T) {
+    let X = null; try { X = JSON.parse(localStorage.getItem(XKEY)); } catch (e) {}
+    if (!X || typeof X !== 'object' || !T || !Array.isArray(T.week)) return T;
+    if (!T.outAt && T.liveAt && X.liveAt === T.liveAt && +X.outAt > 0) T.outAt = +X.outAt;
+    (Array.isArray(X.days) ? X.days : []).forEach((x, i) => { const d = T.week[i]; if (d && d.s && d.e && x && !d.adj && x.sig === sig(d) && Number.isInteger(x.adj) && Math.abs(x.adj) < 1440) d.adj = x.adj; });
+    return T;
+  }
+  reapply(S);
   let saveT = 0;
   // writes only when this tab's state differs from what it last read or wrote, so an idle
   // older tab being hidden or closed cannot put its stale copy over another tab's edits
@@ -970,7 +983,9 @@ details.help li::marker { color: var(--ink-3); }
     clearTimeout(saveT); saveT = 0;
     const txt = JSON.stringify(S); if (txt === last) return;
     // storage full or turned off: the Your data card says so (it listens for this event)
-    try { localStorage.setItem(KEY, txt); last = txt; } catch (e) { document.dispatchEvent(new Event('shift-hours-save-failed')); }
+    try { localStorage.setItem(KEY, txt); last = txt; lastRead = null; } catch (e) { document.dispatchEvent(new Event('shift-hours-save-failed')); return; }
+    const x = JSON.stringify({ liveAt: S.liveAt, outAt: S.outAt, days: S.week.map(d => d.adj ? { sig: sig(d), adj: d.adj } : null) });
+    if (x !== lastX) try { localStorage.setItem(XKEY, x); lastX = x; } catch (e) {}
   };
   const save = () => { clearTimeout(saveT); saveT = setTimeout(flush, 250); };
   window.addEventListener('pagehide', flush);
@@ -1125,10 +1140,14 @@ details.help li::marker { color: var(--ink-3); }
   // (typed times have no date, so they stay wall-clock). Minutes to add: +60 when clocks go back, -60 when they go forward.
   // a, b: start and end as typed (minute of the day)
   function clockChange(a, b) {
-    // only a recent punch (2 days): an old punch time left under a new shift must not lend it its clock change
-    if (!S.liveAt || Date.now() - S.liveAt > 48 * 3600e3) return 0;
-    const st = new Date(S.liveAt), mod = d => d.getHours() * 60 + d.getMinutes();
-    if (mod(st) !== a) return 0; // the start box no longer shows the punch-in time
+    // only a recent punch: live, or let go of under 12 h ago (outAt). An old punch time left under a new shift must not
+    // lend it its clock change, and state saved before 2026-10-23 (no outAt) never gets one
+    if (!S.liveAt || !(S.live || (S.outAt && Date.now() - S.outAt < 12 * 3600e3))) return 0;
+    const p0 = new Date(S.liveAt), mod = d => d.getHours() * 60 + d.getMinutes();
+    // the start: the punch-in moment, or a corrected start time placed on that day (or the day either side), within 3 h of it
+    const st = mod(p0) === a ? p0 : [-1, 0, 1].map(k => new Date(p0.getFullYear(), p0.getMonth(), p0.getDate() + k, 0, a))
+      .filter(d => mod(d) === a && Math.abs(d - p0) <= 3 * 3600e3).sort((x, y) => Math.abs(x - p0) - Math.abs(y - p0))[0];
+    if (!st) return 0;
     // the end: now while live, or the punch-out moment while the end box shows it, else that clock time after the start
     const end = [S.live ? Date.now() : 0, S.outAt].map(t => t ? new Date(t) : null).find(d => d && mod(d) === b % 1440 && d > st && d - st < 26 * 3600e3)
       || new Date(st.getFullYear(), st.getMonth(), st.getDate(), 0, a + span(a, b));
@@ -1428,7 +1447,7 @@ details.help li::marker { color: var(--ink-3); }
     if (Math.min(x, 1440 - x) > 180) { S.liveAt = 0; S.outAt = 0; }
   }
   function handEdit(f) {
-    if (f === S.end && S.live) S.live = false;
+    if (f === S.end && S.live) { S.live = false; S.outAt = Date.now(); } // the clock let go now: the typed end is this punch's
     if (f === S.start || f === S.end) liveNote = '';
     // a day's times typed by hand are wall-clock again
     const D = S.week.find(x => x.s === f || x.e === f); if (D) D.adj = 0;
@@ -1473,14 +1492,17 @@ details.help li::marker { color: var(--ink-3); }
   // ---- other tabs ----
   // another tab saved: take its state, unless this tab has edits waiting to be written (those win)
   function adopt(txt) {
-    if (txt == null || txt === last || saveT) return;
+    if (txt == null || txt === last || txt === lastRead || saveT) return;
     let raw; try { raw = JSON.parse(txt); } catch (e) { return; }
     if (!raw || typeof raw !== 'object') return;
     // a tab still running an older copy of the page saves without week rows; keep ours
     const keepWeek = !('week' in raw) ? S.week : null;
     const next = normalise(raw);
     if (keepWeek) next.week = keepWeek;
-    last = keepWeek ? null : txt; // with week restored, write the merged state back
+    reapply(next); // an older page's save without outAt / adj: put them back
+    // with week restored, write the merged state back. Otherwise don't write just because this page's shape differs
+    // (new fields, outAt / adj put back): an older tab would re-save its own shape, and the two would trade saves forever
+    last = keepWeek ? null : JSON.stringify(next); lastRead = txt;
     const act = document.activeElement, id = act && act.id, sel = act && act.selectionStart != null ? [act.selectionStart, act.selectionEnd] : null;
     S = next; moved.clear();
     build();
@@ -1654,6 +1676,8 @@ details.help li::marker { color: var(--ink-3); }
     }
     clearTimeout(b._t); delete b.dataset.arm;
     D.s = { v: S.start.v, ap: S.start.ap }; D.e = { v: S.end.v, ap: S.end.ap }; D.brk = r.brk ? String(r.brk) : ''; D.adj = r.clock || 0;
+    // the punch is filed: a later shift typed in the calculator must not take its day or its clock change
+    if (S.liveAt) { S.liveAt = 0; S.outAt = 0; }
     openDay = -1; build();
     const row = $('wr' + i); if (row) { row.classList.remove('just'); void row.offsetWidth; row.classList.add('just'); }
     b.classList.add('ok'); b.textContent = 'Added to ' + DAYS[i];
@@ -1693,7 +1717,7 @@ details.help li::marker { color: var(--ink-3); }
   function selectText(id) { const el = $(id), r = document.createRange(), u = el.querySelector('small'); r.selectNodeContents(el); if (u) r.setEndBefore(u); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
   copier('copyDec', 'dec'); copier('copyHm', 'hm2'); copier('copyWeek', 'wDec');
 
-  window.__hours = { parse, toMin, roundMin, span, compute, computeDay, renderWeek, normalise, tickLive, get S() { return S; } };
+  window.__hours = { reapply, parse, toMin, roundMin, span, compute, computeDay, renderWeek, normalise, tickLive, get S() { return S; } };
   // if saved state breaks the page, keep a copy of it (instead of deleting it) and start fresh
   try { build(); tickLive(); } catch (e) {
     console.error(e);
@@ -2118,7 +2142,9 @@ details.help li::marker { color: var(--ink-3); }
   document.addEventListener('shift-hours-save-failed', () => { saveFailed = true; const m = $('dataMsg'); if (!/not saving/.test(m.textContent) || m.hidden) msg('This browser is not saving your changes (its storage is full or turned off), so they will be gone when the page closes.', true); });
   const canStore = () => { if (saveFailed) return false; try { localStorage.setItem('shift-hours-probe', '1'); localStorage.removeItem('shift-hours-probe'); return true; } catch (e) { return false; } };
   const NOSTORE = 'Can’t back up: this browser is not saving your data (its storage is full or turned off).';
-  const bundle = () => ({ app: 'shift-hours', v: 1, saved: new Date().toISOString(), hours: parse(get(HK)), perdiem: parse(get(PK)), view: get(VK) || 'hr' });
+  // hours as saved, with the clock-change fields an older tab may have dropped put back from their side key
+  const hoursNow = () => { const h = parse(get(HK)); try { return h && window.__hours ? window.__hours.reapply(h) : h; } catch (e) { return h; } };
+  const bundle = () => ({ app: 'shift-hours', v: 1, saved: new Date().toISOString(), hours: hoursNow(), perdiem: parse(get(PK)), view: get(VK) || 'hr' });
   const isBundle = b => !!b && typeof b === 'object' && b.app === 'shift-hours' && (b.hours == null || typeof b.hours === 'object') && (b.perdiem == null || typeof b.perdiem === 'object');
   const daysOf = h => (h && Array.isArray(h.week) ? h.week : []).filter(d => d && ((d.s && String(d.s.v || '').trim()) || (d.e && String(d.e.v || '').trim()))).length;
   const daysTxt = n => n + (n === 1 ? ' day' : ' days') + ' filled in the week';
@@ -2152,7 +2178,8 @@ details.help li::marker { color: var(--ink-3); }
   function apply(b) {
     try {
       // a part the bundle does not carry (no per diem used on the other device) stays as it is here
-      if (b.hours) localStorage.setItem(HK, JSON.stringify(b.hours));
+      // the hours page's clock-change side copy (shift-hours-v1x) belongs to the hours being replaced
+      if (b.hours) { localStorage.setItem(HK, JSON.stringify(b.hours)); localStorage.removeItem(HK + 'x'); }
       if (b.perdiem) localStorage.setItem(PK, JSON.stringify(b.perdiem));
       if (b.view === 'pd' || b.view === 'hr') localStorage.setItem(VK, b.view);
     } catch (e) { msg('Could not save on this device.', true); return; }

@@ -28,6 +28,9 @@ const blankDay = () => ({ s: { v: '', ap: 'am' }, e: { v: '', ap: 'pm' }, brk: '
 const hours = (o = {}) => Object.assign({ fmt: '12', nBreaks: 0, breakMode: 'min', round: 0, roundBreaks: 1, start: { v: '', ap: 'am' }, end: { v: '', ap: 'pm' }, liveAt: 0, live: false, br: [blankBr(), blankBr(), blankBr()], week: Array.from({ length: 7 }, blankDay) }, o);
 const day = (s, sa, e, ea, brk = '') => ({ s: { v: s, ap: sa }, e: { v: e, ap: ea }, brk });
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sha-'));
+// the page as audited (before these fixes), served at /old.html, stands for a tab still running the old copy
+let OLD = ''; try { OLD = require('child_process').execSync('git -C ' + JSON.stringify(ROOT) + ' show 2155b07:index.html', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); } catch (e) {}
+if (OLD) over['/old.html'] = OLD;
 
 (async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
@@ -212,6 +215,70 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sha-'));
     await O.p.goto(base); await O.p.waitForTimeout(200);
     ok('M5: typed shift under an old punch time from main is wall clock (9.00)', (await T(O.p, '#hm')).startsWith('9.00'), await T(O.p, '#hm'));
     noErr('M5 main data', O);
+  }
+
+  // ---------- review 2026-10-23 (PR #2): corrected start, stale punch, older-page tab ----------
+  {
+    // a corrected start keeps the clock change: 9:45 PM EDT to 6:00 AM EST punched is 9.25
+    const P = await mk({ clock: new Date('2026-11-01T02:00:00Z') }); // Sat Oct 31, 10 PM EDT
+    await P.p.goto(base); await P.p.evaluate(() => localStorage.clear()); await P.p.reload(); await P.p.waitForTimeout(200);
+    await tap(P.p, '#punch'); await P.p.clock.runFor(9 * 3600e3); await tap(P.p, '#punch'); await P.p.waitForTimeout(50);
+    await P.p.fill('#startIn', '945'); await P.p.$eval('#startIn', e => e.blur()); await P.p.waitForTimeout(50);
+    ok('R1: a corrected start keeps the clock change (9:45 PM to 6 AM = 9.25)', (await T(P.p, '#hm')).startsWith('9.25') && /Clocks went back/.test(await T(P.p, '#badges')), (await T(P.p, '#hm')) + ' ' + (await T(P.p, '#badges')));
+    await tap(P.p, '#addWeek'); await P.p.waitForTimeout(50);
+    ok('R1: and Add to Sat stores 9.25', (await T(P.p, '#wh5')).startsWith('9.25'), await T(P.p, '#wh5'));
+    // the next night, the same times typed by hand: no clock change, and today's day
+    await P.p.clock.runFor(17 * 3600e3); // Sun 11 PM EST
+    await P.p.fill('#startIn', '1000'); await P.p.$eval('#startIn', e => e.blur()); await P.p.fill('#endIn', '600'); await P.p.$eval('#endIn', e => e.blur()); await P.p.waitForTimeout(50);
+    const r2 = { hm: await T(P.p, '#hm'), b: await T(P.p, '#badges'), key: await T(P.p, '#addWeek') };
+    ok('R2: a shift typed after a filed punch has no clock change and goes to today', r2.hm.startsWith('8.00') && !/Clocks/.test(r2.b) && r2.key === 'Add to Sun', JSON.stringify(r2));
+    noErr('R1/R2', P);
+    // same, but the punch was never added: 17 h after punching out the typed shift still has no clock change
+    const Q = await mk({ clock: new Date('2026-11-01T02:00:00Z') });
+    await Q.p.goto(base); await Q.p.evaluate(() => localStorage.clear()); await Q.p.reload(); await Q.p.waitForTimeout(200);
+    await tap(Q.p, '#punch'); await Q.p.clock.runFor(9 * 3600e3); await tap(Q.p, '#punch'); await Q.p.clock.runFor(17 * 3600e3);
+    await Q.p.fill('#endIn', '600'); await Q.p.$eval('#endIn', e => e.blur()); await Q.p.waitForTimeout(50);
+    ok('R2: an old punch (over 12 h since punch out) lends no clock change', (await T(Q.p, '#hm')).startsWith('8.00'), await T(Q.p, '#hm'));
+    noErr('R2 unfiled', Q);
+  }
+  if (OLD) {
+    // a tab still running the page from before the fix (2155b07) re-saves without outAt / adj; they come back
+    const N = await mk({ clock: new Date('2026-11-01T02:00:00Z') });
+    await N.p.goto(base); await N.p.evaluate(() => localStorage.clear()); await N.p.reload(); await N.p.waitForTimeout(200);
+    let O = null;
+    const oldSave = async () => { await N.p.clock.runFor(400); await O.waitForTimeout(300); await O.$eval('#roundSeg button[data-r="0"]', e => e.click()); await N.p.clock.runFor(400); await N.p.waitForTimeout(100); await N.p.clock.runFor(400); };
+    await tap(N.p, '#punch'); await N.p.clock.runFor(9 * 3600e3); await tap(N.p, '#punch'); await N.p.waitForTimeout(50);
+    await N.p.clock.runFor(400); // opened after the punch (an old tab that is live too re-stamps the end itself, in either page)
+    O = await N.ctx.newPage(); O.on('pageerror', e => N.errs.push('old pageerror ' + e.message));
+    await O.goto(base + 'old.html'); await O.waitForTimeout(200);
+    await oldSave();
+    const h1 = await stored(N.p, HK);
+    ok('R3: the punch\'s clock change survives a save by the old page', !h1.outAt && (await T(N.p, '#hm')).startsWith('9.00') && (await N.p.evaluate(() => window.__hours.S.outAt)) > 0, h1.outAt + ' ' + (await T(N.p, '#hm')));
+    await tap(N.p, '#addWeek'); await N.p.waitForTimeout(50);
+    await oldSave();
+    const h2 = await stored(N.p, HK);
+    ok('R3: a day\'s clock change survives a save by the old page', !h2.week[5].adj && h2.week[5].s.v === '1000' && (await T(N.p, '#wDec')) === '9.00', JSON.stringify(h2.week[5]) + ' ' + (await T(N.p, '#wDec')));
+    // no trading of saves between the two tabs
+    const before = await N.p.evaluate(k => localStorage.getItem(k), HK);
+    for (let i = 0; i < 6; i++) { await N.p.clock.runFor(400); await N.p.waitForTimeout(100); }
+    ok('R3: the two tabs do not keep re-saving each other', (await N.p.evaluate(k => localStorage.getItem(k), HK)) === before);
+    const bk = await N.p.evaluate(() => window.__backup.bundle().hours.week[5].adj);
+    ok('R3: a backup made then still carries the day\'s correction', bk === 60, bk);
+    await N.p.reload(); await N.p.waitForTimeout(200);
+    ok('R3: and after a reload', (await T(N.p, '#wDec')) === '9.00', await T(N.p, '#wDec'));
+    // a day edited in the old page is a typed shift again: no correction is put back
+    await O.$eval('#wd5', e => e.click()); await O.$eval('#w5e', e => { e.value = '700'; e.dispatchEvent(new Event('input', { bubbles: true })); }); await oldSave();
+    ok('R3: a day changed in the old page gets no correction back', (await T(N.p, '#wDec')) === '9.00' && !(await N.p.evaluate(() => window.__hours.S.week[5].adj)), await T(N.p, '#wDec'));
+    noErr('R3', N);
+    // real clock: an old tab and a new tab must not trade saves forever (each one's shape differs from the other's)
+    const Z = await mk();
+    await Z.p.goto(base); await Z.p.evaluate(() => localStorage.clear()); await Z.p.reload(); await Z.p.waitForTimeout(200);
+    const ZO = await Z.ctx.newPage(); await ZO.goto(base + 'old.html'); await ZO.waitForTimeout(200);
+    await ZO.evaluate(() => { window.__ev = 0; addEventListener('storage', () => window.__ev++); });
+    await Z.p.fill('#startIn', '900'); await Z.p.waitForTimeout(3000);
+    const ev = await ZO.evaluate(() => window.__ev);
+    ok('R3: with an old tab open, one edit is one save each way, not a loop', ev <= 2, ev + ' saves seen by the old tab in 3 s');
+    noErr('R3 loop', Z);
   }
 
   // ---------- M6: Save backup downloads on a computer; a closed share sheet says nothing was saved ----------
