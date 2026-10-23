@@ -838,6 +838,7 @@ details.help li::marker { color: var(--ink-3); }
       <div class="qr" id="qrBox" role="img" aria-label="QR code that carries this week to another device"></div>
       <div class="dside">
         <p>On the other device, point its camera at this code, or open the link there. The link carries your week, so send it only to yourself.</p>
+        <p>An iPhone opens the link in Safari, not in Shift Hours on its home screen. For the home-screen app, use Save backup here and Restore there.</p>
         <div class="dkeys"><button type="button" class="key" id="bkCopy">Copy link</button><button type="button" class="key" id="bkShare" hidden>Send link</button><button type="button" class="ghost" id="bkClose">Close</button></div>
       </div>
     </div>
@@ -924,11 +925,16 @@ details.help li::marker { color: var(--ink-3); }
     br: [ { min: '30', s: { v: '1200', ap: 'pm' }, e: { v: '1230', ap: 'pm' } },
           { min: '', s: { v: '', ap: 'pm' }, e: { v: '', ap: 'pm' } },
           { min: '', s: { v: '', ap: 'pm' }, e: { v: '', ap: 'pm' } } ],
-    week: Array.from({ length: 7 }, () => ({ s: { v: '', ap: 'am' }, e: { v: '', ap: 'pm' }, brk: '' })),
-    live: false, liveAt: 0 // on the clock since Punch in (liveAt: when, ms); the end time follows the clock while live
+    // adj: minutes a clock change added to (or took off) a punched shift copied in by Add to day
+    week: Array.from({ length: 7 }, () => ({ s: { v: '', ap: 'am' }, e: { v: '', ap: 'pm' }, brk: '', adj: 0 })),
+    live: false, liveAt: 0, // on the clock since Punch in (liveAt: when, ms); the end time follows the clock while live
+    outAt: 0 // when Punch out stamped the end (ms), so a night when the clocks change counts the real time
   };
   const KEY = 'shift-hours-v1';
-  let S, last = null; // last: the stored text this tab last read or wrote
+  // the clock-change fields (outAt, week[i].adj) also live in a side key that a page from before 2026-10-23 never
+  // touches: such a page drops them when it re-saves KEY, and they are put back where the day still matches
+  const XKEY = 'shift-hours-v1x';
+  let S, last = null, lastRead = null; // lastRead: the stored text adopt() last took // last: the stored text this tab last read or wrote
   try { last = localStorage.getItem(KEY); S = JSON.parse(last) || null; } catch (e) { S = null; }
   function normalise(raw) {
     const D = JSON.parse(JSON.stringify(DEFAULT));
@@ -943,28 +949,49 @@ details.help li::marker { color: var(--ink-3); }
       if (Array.isArray(raw.br)) raw.br.forEach(b => { if (obj(b)) { mig(b.s); mig(b.e); } });
     }
     const nb = raw.nBreaks === undefined ? D.nBreaks : Math.min(3, Math.max(0, Math.round(+raw.nBreaks) || 0));
+    const adj = v => { const n = Math.round(+v); return Number.isFinite(n) && Math.abs(n) < 1440 ? n : 0; };
     const br = Array.isArray(raw.br) ? raw.br : [], wk = Array.isArray(raw.week) ? raw.week : [];
     return {
       fmt: raw.fmt === '24' ? '24' : '12', nBreaks: nb, breakMode: raw.breakMode === 'time' ? 'time' : 'min',
       round: [0, 5, 6, 15].includes(+raw.round) ? +raw.round : 0,
       roundBreaks: (raw.roundBreaks === 0 || raw.roundBreaks === '0') ? 0 : 1,
       start: fld(raw.start, D.start), end: fld(raw.end, D.end),
-      liveAt: +raw.liveAt > 0 ? +raw.liveAt : 0, live: raw.live === true && +raw.liveAt > 0,
-      br: D.br.map((d, i) => { const b = obj(br[i]) ? br[i] : {}; return { min: str(b.min), s: fld(b.s, d.s), e: fld(b.e, d.e) }; }),
-      week: D.week.map((d, i) => { const w = obj(wk[i]) ? wk[i] : {}; return { s: obj(w.s) ? fld(w.s, d.s) : { ...d.s }, e: obj(w.e) ? fld(w.e, d.e) : { ...d.e }, brk: str(w.brk) }; })
+      liveAt: +raw.liveAt > 0 ? +raw.liveAt : 0, live: raw.live === true && +raw.liveAt > 0, outAt: +raw.outAt > 0 ? +raw.outAt : 0,
+      // a missing break row or time is blank (a move link sends empty rows as null), never the example times in DEFAULT
+      br: D.br.map((d, i) => { const b = obj(br[i]) ? br[i] : {}; return { min: str(b.min), s: obj(b.s) ? fld(b.s, d.s) : { v: '', ap: d.s.ap }, e: obj(b.e) ? fld(b.e, d.e) : { v: '', ap: d.e.ap } }; }),
+      week: D.week.map((d, i) => { const w = obj(wk[i]) ? wk[i] : {}; return { s: obj(w.s) ? fld(w.s, d.s) : { ...d.s }, e: obj(w.e) ? fld(w.e, d.e) : { ...d.e }, brk: str(w.brk), adj: adj(w.adj) }; })
     };
   }
   // a first visit starts blank (placeholders show an example), so nothing on the page looks like real data
   const fresh = S == null;
   S = normalise(S);
   if (fresh) { S.start.v = ''; S.end.v = ''; }
+  const sig = d => [d.s.v, d.s.ap, d.e.v, d.e.ap, d.brk].join('|');
+  // put back outAt / adj an older page dropped: outAt for the same punch (liveAt), adj for a day whose times are unchanged
+  function reapply(T) {
+    let X = null; try { X = JSON.parse(localStorage.getItem(XKEY)); } catch (e) {}
+    if (!X || typeof X !== 'object' || !T || !Array.isArray(T.week)) return T;
+    if (!T.outAt && T.liveAt && X.liveAt === T.liveAt && +X.outAt > 0) T.outAt = +X.outAt;
+    (Array.isArray(X.days) ? X.days : []).forEach((x, i) => { const d = T.week[i]; if (d && d.s && d.e && x && !d.adj && x.sig === sig(d) && Number.isInteger(x.adj) && Math.abs(x.adj) < 1440) d.adj = x.adj; });
+    return T;
+  }
+  reapply(S);
+  // the side key always matches this tab's state (also after a load or an adopt that saved nothing), so an older
+  // tab's next save can't strip a correction for good. It writes only the side key, never KEY, so no tab answers it
+  function writeX() {
+    const x = JSON.stringify({ liveAt: S.liveAt, outAt: S.outAt, days: S.week.map(d => d.adj ? { sig: sig(d), adj: d.adj } : null) });
+    try { if (localStorage.getItem(XKEY) !== x) localStorage.setItem(XKEY, x); } catch (e) {}
+  }
+  writeX();
   let saveT = 0;
   // writes only when this tab's state differs from what it last read or wrote, so an idle
   // older tab being hidden or closed cannot put its stale copy over another tab's edits
   const flush = () => {
     clearTimeout(saveT); saveT = 0;
     const txt = JSON.stringify(S); if (txt === last) return;
-    try { localStorage.setItem(KEY, txt); last = txt; } catch (e) {}
+    // storage full or turned off: the Your data card says so (it listens for this event)
+    try { localStorage.setItem(KEY, txt); last = txt; lastRead = null; } catch (e) { document.dispatchEvent(new Event('shift-hours-save-failed')); return; }
+    writeX();
   };
   const save = () => { clearTimeout(saveT); saveT = setTimeout(flush, 250); };
   window.addEventListener('pagehide', flush);
@@ -1075,6 +1102,11 @@ details.help li::marker { color: var(--ink-3); }
     a = ra % 1440; b = rb % 1440;
     const gross = full ? 1440 : span(a, b);
     if (!gross) out.notes.push(sameNote(a0, b0));
+    const dz = gross && !full ? clockChange(a0, b0) : 0;
+    // an end in the repeated hour that reads earlier than the start wrapped round the day: the real time is under an hour
+    const adj = gross + dz >= 1440 ? dz - 1440 : dz;
+    if (dz) out.notes.push('Clocks went ' + (dz > 0 ? 'back' : 'forward') + ' during this shift, so ' + hhmm(Math.abs(dz)) + (dz > 0 ? ' is added' : ' is taken off'));
+    out.clock = adj;
     // judged on the times as typed too, so rounding a start up to midnight keeps the badge
     out.overnight = !full && gross > 0 && (b < a || b0 < a0);
     out.gross = gross; out.a = a; out.b = b; out.full = full;
@@ -1105,9 +1137,29 @@ details.help li::marker { color: var(--ink-3); }
       if (clipped) out.notes.push('Part of a break is outside the shift, so it is not deducted');
     }
     out.brk = brk;
-    out.total = gross - brk;
+    out.total = gross + adj - brk;
     if (out.total < 0) out.errs.total = 'Breaks are longer than the shift';
     return out;
+  }
+
+  // a punched shift has real moments, so on a night the clocks change it counts the time really worked
+  // (typed times have no date, so they stay wall-clock). Minutes to add: +60 when clocks go back, -60 when they go forward.
+  // a, b: start and end as typed (minute of the day)
+  function clockChange(a, b) {
+    // only a recent punch: live, or let go of under 12 h ago (outAt). An old punch time left under a new shift must not
+    // lend it its clock change, and state saved before 2026-10-23 (no outAt) never gets one
+    if (!S.liveAt || !(S.live || (S.outAt && Date.now() - S.outAt < 12 * 3600e3))) return 0;
+    const p0 = new Date(S.liveAt), mod = d => d.getHours() * 60 + d.getMinutes();
+    // the start: the punch-in moment, or a corrected start time placed on that day (or the day either side), within 3 h of it
+    // (each clock time also an hour either way: on the night clocks go back, 1:15 AM happens twice and the Date
+    // constructor only gives the first)
+    const st = mod(p0) === a ? p0 : [-1, 0, 1].map(k => new Date(p0.getFullYear(), p0.getMonth(), p0.getDate() + k, 0, a))
+      .flatMap(d => [d, new Date(+d + 3600e3), new Date(+d - 3600e3)]).filter(d => mod(d) === a && Math.abs(d - p0) <= 3 * 3600e3).sort((x, y) => Math.abs(x - p0) - Math.abs(y - p0))[0];
+    if (!st) return 0;
+    // the end: now while live, or the punch-out moment while the end box shows it, else that clock time after the start
+    const end = [S.live ? Date.now() : 0, S.outAt].map(t => t ? new Date(t) : null).find(d => d && mod(d) === b % 1440 && d > st && d - st < 26 * 3600e3)
+      || new Date(st.getFullYear(), st.getMonth(), st.getDate(), 0, a + span(a, b));
+    return end.getTimezoneOffset() - st.getTimezoneOffset();
   }
 
   // one timesheet day -> { state, total, decs, errs, need }; same rounding as the calculator.
@@ -1141,8 +1193,11 @@ details.help li::marker { color: var(--ink-3); }
     const ra = roundMin(a, S.round), rb = roundMin(b, S.round);
     const gross = (rb === 1440 && ra === 0 && a !== b) ? 1440 : span(ra % 1440, rb % 1440);
     if (!gross) r.decs.unshift(sameNote(a, b));
-    if (brk > gross) { fail('b', 'Break is longer than the shift'); r.state = 'bad'; return r; }
-    r.total = gross - brk; r.state = 'ok';
+    // a punched shift added on a night the clocks changed keeps the real time it was worked
+    const adj = gross ? +D.adj || 0 : 0;
+    if (adj) r.decs.push(Math.abs(adj) > 180 ? 'Clocks went back during this shift: counted as worked' : 'Clocks ' + (adj > 0 ? 'went back' : 'went forward') + ': ' + hhmm(Math.abs(adj)) + (adj > 0 ? ' added' : ' taken off'));
+    if (brk > gross + adj) { fail('b', 'Break is longer than the shift'); r.state = 'bad'; return r; }
+    r.total = gross + adj - brk; r.state = 'ok';
     return r;
   }
   const narrow = matchMedia('(max-width: 640px)');
@@ -1158,7 +1213,7 @@ details.help li::marker { color: var(--ink-3); }
     if (descId) inp.setAttribute('aria-describedby', descId);
     inp.placeholder = S.fmt === '24' ? '1730' : '915'; inp.value = f.v; inp.setAttribute('aria-label', label);
     inp.addEventListener('input', () => { f.v = inp.value; moved.delete(f); seen.delete(id); handEdit(f); update(); });
-    inp.addEventListener('blur', () => { seen.add(id); update(); });
+    inp.addEventListener('blur', () => { seen.add(id); startSettled(f); update(); });
     wrap.appendChild(inp);
     if (S.fmt === '12') {
       const seg = document.createElement('div');
@@ -1167,7 +1222,7 @@ details.help li::marker { color: var(--ink-3); }
         const btn = document.createElement('button');
         btn.type = 'button'; btn.id = id + '-' + v; btn.textContent = v.toUpperCase();
         btn.setAttribute('aria-pressed', String(f.ap === v));
-        btn.addEventListener('click', () => { f.ap = v; seg.dataset.pos = v; [...seg.children].forEach(c => c.setAttribute('aria-pressed', String(c === btn))); handEdit(f); update(); });
+        btn.addEventListener('click', () => { f.ap = v; seg.dataset.pos = v; [...seg.children].forEach(c => c.setAttribute('aria-pressed', String(c === btn))); handEdit(f); startSettled(f); update(); });
         seg.appendChild(btn);
       });
       wrap.appendChild(seg);
@@ -1391,7 +1446,20 @@ details.help li::marker { color: var(--ink-3); }
   // ---- punch clock: while live, the end time follows the clock (every half minute, and when the page comes back) ----
   let liveNote = '';
   // editing the end time by hand means "that is my end time", so the clock lets go of it
-  function handEdit(f) { if (f === S.end && S.live) S.live = false; if (f === S.start || f === S.end) liveNote = ''; }
+  // a start typed after punching out that is more than 3 hours from the punch-in time is a new shift, so it no longer
+  // belongs to the punch-in day or its moments; closer, it is a correction of the punch. Checked once the start is settled.
+  function startSettled(f) {
+    if (f !== S.start || S.live || !S.liveAt) return;
+    const p = parse(f.v, S.fmt); if (!p || p.err) return;
+    const d = new Date(S.liveAt), x = Math.abs(toMin(p, f.ap, S.fmt) - (d.getHours() * 60 + d.getMinutes())) % 1440;
+    if (Math.min(x, 1440 - x) > 180) { S.liveAt = 0; S.outAt = 0; }
+  }
+  function handEdit(f) {
+    if (f === S.end && S.live) { S.live = false; S.outAt = Date.now(); } // the clock let go now: the typed end is this punch's
+    if (f === S.start || f === S.end) liveNote = '';
+    // a day's times typed by hand are wall-clock again
+    const D = S.week.find(x => x.s === f || x.e === f); if (D) D.adj = 0;
+  }
   function setField(id, f) {
     const inp = $(id); if (!inp) return;
     if (inp.value !== f.v) inp.value = f.v;
@@ -1400,7 +1468,8 @@ details.help li::marker { color: var(--ink-3); }
   }
   function tickLive() {
     if (!S.live) return;
-    if (Date.now() - S.liveAt > 24 * 3600e3) { S.live = false; liveNote = 'Punched in more than a day ago, so the clock let go of the end time'; update(); return; }
+    // the last stamp is not a real end (the page may have been closed for hours), so the end box is emptied
+    if (Date.now() - S.liveAt > 24 * 3600e3) { S.live = false; S.end.v = ''; setField('endIn', S.end); liveNote = 'Punched in more than a day ago, so the clock let go of the end time. Type when you finished'; update(); return; }
     const was = S.end.v + S.end.ap;
     stampNow(S.end);
     if (S.end.v + S.end.ap !== was) { setField('endIn', S.end); update(); }
@@ -1431,16 +1500,20 @@ details.help li::marker { color: var(--ink-3); }
   // ---- other tabs ----
   // another tab saved: take its state, unless this tab has edits waiting to be written (those win)
   function adopt(txt) {
-    if (txt == null || txt === last || saveT) return;
+    if (txt == null || txt === last || txt === lastRead || saveT) return;
     let raw; try { raw = JSON.parse(txt); } catch (e) { return; }
     if (!raw || typeof raw !== 'object') return;
     // a tab still running an older copy of the page saves without week rows; keep ours
     const keepWeek = !('week' in raw) ? S.week : null;
     const next = normalise(raw);
     if (keepWeek) next.week = keepWeek;
-    last = keepWeek ? null : txt; // with week restored, write the merged state back
+    reapply(next); // an older page's save without outAt / adj: put them back
+    // with week restored, write the merged state back. Otherwise don't write just because this page's shape differs
+    // (new fields, outAt / adj put back): an older tab would re-save its own shape, and the two would trade saves forever
+    last = keepWeek ? null : JSON.stringify(next); lastRead = txt;
     const act = document.activeElement, id = act && act.id, sel = act && act.selectionStart != null ? [act.selectionStart, act.selectionEnd] : null;
     S = next; moved.clear();
+    writeX();
     build();
     if (id && $(id)) { const el = $(id); el.focus(); if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch (e) {} }
   }
@@ -1584,20 +1657,20 @@ details.help li::marker { color: var(--ink-3); }
     const b = $('clearWeek');
     if (!b.dataset.arm) { b.dataset.arm = '1'; b.textContent = 'Tap again to clear'; clearTimeout(b._t); b._t = setTimeout(() => { delete b.dataset.arm; b.textContent = 'Clear week'; }, 3000); return; }
     clearTimeout(b._t); delete b.dataset.arm; b.textContent = 'Clear week';
-    S.week.forEach(D => { D.s.v = ''; D.e.v = ''; D.s.ap = 'am'; D.e.ap = 'pm'; D.brk = ''; });
+    S.week.forEach(D => { D.s.v = ''; D.e.v = ''; D.s.ap = 'am'; D.e.ap = 'pm'; D.brk = ''; D.adj = 0; });
     openDay = -1; build();
   });
   $('clear').addEventListener('click', () => {
     S.start.v = ''; S.end.v = ''; S.start.ap = 'am'; S.end.ap = 'pm';
     S.br.forEach(b => { b.min = ''; b.s.v = ''; b.e.v = ''; });
-    S.live = false; S.liveAt = 0; liveNote = '';
+    S.live = false; S.liveAt = 0; S.outAt = 0; liveNote = '';
     build(); $('startIn').focus();
   });
   // Punch in: stamp the start with the clock's time and keep the end on the clock; Punch out: stamp the end and let go
   $('punch').addEventListener('click', () => {
     liveNote = '';
-    if (S.live) { stampNow(S.end); S.live = false; build(); announce('Punched out at ' + clockOf(S.end) + '. ' + $('hm').textContent.replace('hrs', ' hours'), true); }
-    else { S.live = true; S.liveAt = Date.now(); stampNow(S.start); stampNow(S.end); build(); announce('Punched in at ' + clockOf(S.start) + '. The end time follows the clock until you punch out.', true); }
+    if (S.live) { stampNow(S.end); S.live = false; S.outAt = Date.now(); build(); announce('Punched out at ' + clockOf(S.end) + '. ' + $('hm').textContent.replace('hrs', ' hours'), true); }
+    else { S.live = true; S.liveAt = Date.now(); S.outAt = 0; stampNow(S.start); stampNow(S.end); build(); announce('Punched in at ' + clockOf(S.start) + '. The end time follows the clock until you punch out.', true); }
   });
   // Add to day: copy the shift (start, end, deducted break minutes) into that day's timecard row; a filled day asks for a second tap
   $('addWeek').addEventListener('click', () => {
@@ -1611,10 +1684,12 @@ details.help li::marker { color: var(--ink-3); }
       return;
     }
     clearTimeout(b._t); delete b.dataset.arm;
-    D.s = { v: S.start.v, ap: S.start.ap }; D.e = { v: S.end.v, ap: S.end.ap }; D.brk = r.brk ? String(r.brk) : '';
+    D.s = { v: S.start.v, ap: S.start.ap }; D.e = { v: S.end.v, ap: S.end.ap }; D.brk = r.brk ? String(r.brk) : ''; D.adj = r.clock || 0;
+    // the punch is filed: a later shift typed in the calculator must not take its day or its clock change
+    if (S.liveAt) { S.liveAt = 0; S.outAt = 0; }
     openDay = -1; build();
     const row = $('wr' + i); if (row) { row.classList.remove('just'); void row.offsetWidth; row.classList.add('just'); }
-    b.classList.add('ok'); b.textContent = 'Added to ' + DAYS[i];
+    b.classList.add('ok'); b.textContent = 'Added to ' + DAYS[i] + ' \u00b7 ' + (r.total / 60).toFixed(2);
     b._t = setTimeout(() => { b.classList.remove('ok'); update(); }, 1600);
     announce('Added to ' + FULLDAY[i] + ': ' + (r.total / 60).toFixed(2) + ' hours', true);
   });
@@ -1651,7 +1726,7 @@ details.help li::marker { color: var(--ink-3); }
   function selectText(id) { const el = $(id), r = document.createRange(), u = el.querySelector('small'); r.selectNodeContents(el); if (u) r.setEndBefore(u); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
   copier('copyDec', 'dec'); copier('copyHm', 'hm2'); copier('copyWeek', 'wDec');
 
-  window.__hours = { parse, toMin, roundMin, span, compute, computeDay, renderWeek, normalise, tickLive, get S() { return S; } };
+  window.__hours = { reapply, parse, toMin, roundMin, span, compute, computeDay, renderWeek, normalise, tickLive, get S() { return S; } };
   // if saved state breaks the page, keep a copy of it (instead of deleting it) and start fresh
   try { build(); tickLive(); } catch (e) {
     console.error(e);
@@ -1805,7 +1880,7 @@ details.help li::marker { color: var(--ink-3); }
   };
   let S;
   try { S = norm(JSON.parse(localStorage.getItem(KEY))); } catch (e) { S = norm(null); }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { document.dispatchEvent(new Event('shift-hours-save-failed')); } };
 
   // ---- data (fetched the first time the view opens) ----
   let D = null, loading = null, failed = false, cur = null; // cur = resolved item for S.sel
@@ -1888,7 +1963,10 @@ details.help li::marker { color: var(--ink-3); }
   }
   function choose(h) {
     if (!h) return;
-    cur = h; S.sel = h.kind === 'zip' ? { t: 'z', z: h.zip } : { t: 'p', st: h.st, n: h.n }; S.ch = null;
+    const sel = h.kind === 'zip' ? { t: 'z', z: h.zip } : { t: 'p', st: h.st, n: h.n };
+    // meals given were for the trip to the last place, so another place starts with none taken off
+    const o = S.sel; if (!o || o.t !== sel.t || (sel.t === 'z' ? String(o.z) !== sel.z : o.st !== sel.st || o.n !== sel.n)) S.given = {};
+    cur = h; S.sel = sel; S.ch = null;
     q.value = ''; closeSug(); $('pdErr').hidden = true; save(); render(); q.blur();
   }
   q.addEventListener('input', () => { if (!D) ensureData(); showSug(); });
@@ -1909,7 +1987,8 @@ details.help li::marker { color: var(--ink-3); }
   q.addEventListener('blur', () => setTimeout(closeSug, 250));
 
   // ---- rates card ----
-  function nowIdx() { const t = new Date(), a = parseD(D.start), b = parseD(D.end); return t >= a && t <= new Date(b.getFullYear(), b.getMonth(), b.getDate() + 1) ? fyIdx(t) : 0; }
+  const inFy = t => { const a = parseD(D.start), b = parseD(D.end); return t >= a && t <= new Date(b.getFullYear(), b.getMonth(), b.getDate() + 1); };
+  function nowIdx() { const t = new Date(); return inFy(t) ? fyIdx(t) : 0; }
   function renderRates() {
     const empty = $('pdEmpty'), box = $('pdRates');
     if (!D) {
@@ -1938,15 +2017,19 @@ details.help li::marker { color: var(--ink-3); }
         // same-name towns can list dozens of counties: show three and a count
         const cs = c.lab ? c.lab.split(', ') : [];
         const A = D.areas[c.a], lab = cs.length > 3 ? cs.slice(0, 3).join(', ') + ' and ' + (cs.length - 3) + ' more' : c.lab || (c.a === 0 ? 'Counties not on GSA’s list' : A[2]);
-        return '<button type="button" class="choice" data-a="' + c.a + '" aria-pressed="' + (c.a === a) + '"><b>' + esc(c.a === 0 ? 'Standard rate' : A[0] + ', ' + A[1]) + '</b><small>' + esc(lab) + '</small><span>$' + A[4][ni] + ' · $' + A[3] + '</span></button>';
+        const rn = A[5] && A[5].seasons && inFy(new Date()) ? PDcore.rateOn(c.a, new Date()) : null; // same rate as the big number
+        return '<button type="button" class="choice" data-a="' + c.a + '" aria-pressed="' + (c.a === a) + '"><b>' + esc(c.a === 0 ? 'Standard rate' : A[0] + ', ' + A[1]) + '</b><small>' + esc(lab) + '</small><span>$' + (rn ? rn.lodging : A[4][ni]) + ' · $' + A[3] + '</span></button>';
       }).join('');
     } else { chBox.hidden = true; chBox.innerHTML = ''; }
     if (a == null) { nums.hidden = true; $('pdCty').textContent = ''; $('pdStatus').textContent = cur.label + ': pick a rate area'; return; }
     nums.hidden = false;
-    const A = D.areas[a], L = A[4], X = A[5] || null, dod = !!(X && X.dod), mm = X && X.mie ? X.mie : null, m = mm ? mm[ni] : A[3], sp = D.mie[m];
+    const A = D.areas[a], L = A[4], X = A[5] || null, dod = !!(X && X.dod), mm = X && X.mie ? X.mie : null;
+    // in a month whose season changes mid-month, the big numbers are today's rate (the grid shows the rate on the 1st)
+    const t = new Date(), midNow = !!(X && X.seasons) && inFy(t) && X.seasons.some(sn => !/\/01$/.test(sn[0]) && +sn[0].slice(0, 2) === t.getMonth() + 1);
+    const rt = midNow ? PDcore.rateOn(a, t) : null, Ln = rt ? rt.lodging : L[ni], m = rt ? rt.mie : mm ? mm[ni] : A[3], sp = D.mie[m];
     $('pdCty').textContent = a === 0 ? 'Standard rate: this county isn’t on GSA’s list' : dod ? 'Defense Department rate area: ' + A[0] + ', ' + A[1] : 'Rate area: ' + A[0] + ', ' + A[1] + ' · ' + A[2];
-    $('pdLk').textContent = 'Lodging in ' + D.months[ni];
-    $('pdL').innerHTML = '<span class="cur">$</span>' + L[ni];
+    $('pdLk').textContent = midNow ? 'Lodging today' : 'Lodging in ' + D.months[ni];
+    $('pdL').innerHTML = '<span class="cur">$</span>' + Ln;
     $('pdM').innerHTML = '<span class="cur">$</span>' + m;
     const hi = Math.max(...L), lo = Math.min(...L);
     $('pdMonths').innerHTML = L.map((v, i) => '<div class="mo' + (i === ni ? ' now' : '') + (hi !== lo && v === lo ? ' lo' : '') + '"><span>' + D.months[i] + '</span><b>$' + v + '</b></div>').join('');
@@ -1966,7 +2049,7 @@ details.help li::marker { color: var(--ink-3); }
     if (new Date() < parseD(D.start)) b.push('<span class="badge">FY ' + D.fy + ' rates start ' + fmtD(parseD(D.start), 1) + '</span>');
     if (new Date() > new Date(parseD(D.end).getTime() + 864e5)) b.push('<span class="badge err">FY ' + D.fy + ' rates; newer ones may apply</span>');
     $('pdBadges').innerHTML = b.join('');
-    $('pdStatus').textContent = cur.label + ': lodging $' + L[ni] + ' a night, M&IE $' + m + ' a day';
+    $('pdStatus').textContent = cur.label + ': lodging $' + Ln + ' a night, M&IE $' + m + ' a day';
   }
   $('pdChoices').addEventListener('click', e => { const b = e.target.closest('.choice'); if (!b) return; S.ch = +b.dataset.a; save(); render(); });
 
@@ -2024,8 +2107,10 @@ details.help li::marker { color: var(--ink-3); }
   }
   function render() { renderRates(); renderTrip(); }
   const set = (fn) => { fn(); save(); render(); };
-  $('pdLeave').addEventListener('change', e => set(() => { S.leave = e.target.value; if (S.back && S.leave && S.back < S.leave) S.back = S.leave; }));
-  $('pdBack').addEventListener('change', e => set(() => { S.back = e.target.value; }));
+  // meals given on days outside the trip are dropped, so a later trip on those dates starts clean
+  const trimGiven = () => { if (S.leave && S.back && S.back >= S.leave) Object.keys(S.given).forEach(k => { if (k < S.leave || k > S.back) delete S.given[k]; }); };
+  $('pdLeave').addEventListener('change', e => set(() => { S.leave = e.target.value; if (S.back && S.leave && S.back < S.leave) S.back = S.leave; trimGiven(); }));
+  $('pdBack').addEventListener('change', e => set(() => { S.back = e.target.value; trimGiven(); }));
   $('pdRows').addEventListener('click', e => { const b = e.target.closest('.mchip'); if (!b) return; set(() => { const g = (Array.isArray(S.given[b.dataset.k]) ? S.given[b.dataset.k] : [false, false, false]).slice(); g[+b.dataset.j] = !g[+b.dataset.j]; S.given[b.dataset.k] = g; }); });
   $('pdClear').addEventListener('click', () => set(() => { S.leave = ''; S.back = ''; S.given = {}; }));
   $('pdCopy').addEventListener('click', () => {
@@ -2038,8 +2123,9 @@ details.help li::marker { color: var(--ink-3); }
   $('pdForm').addEventListener('submit', e => e.preventDefault());
   // another tab changed the per diem state
   window.addEventListener('storage', e => {
-    if (e.storageArea !== localStorage || e.key !== KEY || !e.newValue) return;
-    try { S = norm(JSON.parse(e.newValue)); cur = D ? restore() : null; render(); } catch (x) {}
+    if (e.storageArea !== localStorage || e.key !== KEY) return;
+    // removed there (null) means nothing saved: take that too, so this tab doesn't save its old trip back
+    try { S = norm(e.newValue ? JSON.parse(e.newValue) : null); cur = D ? restore() : null; render(); } catch (x) {}
   });
 
   window.__perdiem = { core: PDcore, compute, setView, ensureData, get S() { return S; } };
@@ -2060,24 +2146,50 @@ details.help li::marker { color: var(--ink-3); }
   const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const parse = t => { try { return t ? JSON.parse(t) : null; } catch (e) { return null; } };
   const msg = (t, bad) => { const m = $('dataMsg'); m.textContent = t; m.hidden = !t; m.classList.toggle('bad', !!bad); };
-  const bundle = () => ({ app: 'shift-hours', v: 1, saved: new Date().toISOString(), hours: parse(get(HK)), perdiem: parse(get(PK)), view: get(VK) || 'hr' });
+  // a save that failed (storage full or turned off) is said here, not lost quietly
+  let saveFailed = false; // a save failed this session: the stored copy may be old even if a small test write fits
+  document.addEventListener('shift-hours-save-failed', () => { saveFailed = true; const m = $('dataMsg'); if (!/not saving/.test(m.textContent) || m.hidden) msg('This browser is not saving your changes (its storage is full or turned off), so they will be gone when the page closes.', true); });
+  const canStore = () => { if (saveFailed) return false; try { localStorage.setItem('shift-hours-probe', '1'); localStorage.removeItem('shift-hours-probe'); return true; } catch (e) { return false; } };
+  const NOSTORE = 'Can’t back up: this browser is not saving your data (its storage is full or turned off).';
+  // hours as saved, with the clock-change fields an older tab may have dropped put back from their side key
+  const hoursNow = () => { const h = parse(get(HK)); try { return h && window.__hours ? window.__hours.reapply(h) : h; } catch (e) { return h; } };
+  const bundle = () => ({ app: 'shift-hours', v: 1, saved: new Date().toISOString(), hours: hoursNow(), perdiem: parse(get(PK)), view: get(VK) || 'hr' });
   const isBundle = b => !!b && typeof b === 'object' && b.app === 'shift-hours' && (b.hours == null || typeof b.hours === 'object') && (b.perdiem == null || typeof b.perdiem === 'object');
+  const daysOf = h => (h && Array.isArray(h.week) ? h.week : []).filter(d => d && ((d.s && String(d.s.v || '').trim()) || (d.e && String(d.e.v || '').trim()))).length;
+  const daysTxt = n => n + (n === 1 ? ' day' : ' days') + ' filled in the week';
+  const calcOf = h => !!(h && ((h.start && String(h.start.v || '').trim()) || (h.end && String(h.end.v || '').trim())));
+  const pdOf = p => { const sel = p && p.sel; return sel ? (sel.t === 'z' ? 'per diem for ZIP ' + sel.z : 'per diem for ' + sel.n + ', ' + sel.st) : ''; };
+  const andList = l => l.length > 1 ? l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1] : l[0] || '';
   // "4 days filled, Seattle, WA, saved Oct 16 at 9:12 PM"
   function describe(b) {
     const parts = [];
-    const wk = b.hours && Array.isArray(b.hours.week) ? b.hours.week : [];
-    const days = wk.filter(d => d && ((d.s && String(d.s.v || '').trim()) || (d.e && String(d.e.v || '').trim()))).length;
-    parts.push(days ? days + (days === 1 ? ' day' : ' days') + ' filled in the week' : 'an empty week');
+    const days = daysOf(b.hours);
+    if (b.hours) parts.push(days ? daysTxt(days) : 'an empty week');
     if (b.hours && b.hours.start && String(b.hours.start.v || '').trim()) parts.push('a shift in the calculator');
-    const sel = b.perdiem && b.perdiem.sel; if (sel) parts.push(sel.t === 'z' ? 'per diem for ZIP ' + sel.z : 'per diem for ' + sel.n + ', ' + sel.st);
+    if (pdOf(b.perdiem)) parts.push(pdOf(b.perdiem));
     const d = new Date(b.saved);
     const when = isNaN(d) ? '' : ', saved ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     return parts.join(', ') + when;
   }
+  // what a Replace would overwrite on this device, and what it leaves alone (a part the bundle does not carry)
+  function losses(b) {
+    const h = parse(get(HK)), p = parse(get(PK)), gone = [], kept = [];
+    if (b.hours) {
+      const n = daysOf(h);
+      if (n) gone.push(daysTxt(n));
+      if (calcOf(h)) gone.push('the shift in the calculator');
+      if (h && h.live === true) gone.push('the running punch clock');
+    }
+    else if (daysOf(h) || calcOf(h) || (h && h.live === true)) kept.push('week and calculator');
+    if (pdOf(p)) (b.perdiem ? gone : kept).push(pdOf(p));
+    return (gone.length ? ' It replaces this device’s ' + andList(gone) + '.' : '') + (kept.length ? ' This device’s ' + andList(kept) + (kept.length > 1 || !b.hours ? ' stay.' : ' stays.') : '');
+  }
   function apply(b) {
     try {
-      if (b.hours) localStorage.setItem(HK, JSON.stringify(b.hours)); else localStorage.removeItem(HK);
-      if (b.perdiem) localStorage.setItem(PK, JSON.stringify(b.perdiem)); else localStorage.removeItem(PK);
+      // a part the bundle does not carry (no per diem used on the other device) stays as it is here
+      // the hours page's clock-change side copy (shift-hours-v1x) belongs to the hours being replaced
+      if (b.hours) { localStorage.setItem(HK, JSON.stringify(b.hours)); localStorage.removeItem(HK + 'x'); }
+      if (b.perdiem) localStorage.setItem(PK, JSON.stringify(b.perdiem));
       if (b.view === 'pd' || b.view === 'hr') localStorage.setItem(VK, b.view);
     } catch (e) { msg('Could not save on this device.', true); return; }
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
@@ -2087,13 +2199,12 @@ details.help li::marker { color: var(--ink-3); }
   const b64u = bytes => { let s = ''; bytes.forEach(x => { s += String.fromCharCode(x); }); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
   const unb64u = t => { const b = t.replace(/-/g, '+').replace(/_/g, '/'); return Uint8Array.from(atob(b + '='.repeat((4 - b.length % 4) % 4)), c => c.charCodeAt(0)); };
   const pipe = (bytes, S, kind) => new Response(new Blob([bytes]).stream().pipeThrough(new S(kind))).arrayBuffer().then(a => new Uint8Array(a));
-  // a smaller link: empty break rows and empty week days travel as null (the page fills defaults back in)
+  // a smaller link: empty week days travel as null (the page fills blank days back in). Break rows go as they are,
+  // because a page from before 2026-10-23 fills a missing break row with example times
   function compact(b) {
     const c = JSON.parse(JSON.stringify(b)), blank = f => !f || !String(f.v || '').trim();
     if (c.hours) {
-      if (Array.isArray(c.hours.br)) c.hours.br = c.hours.br.map(x => x && !String(x.min || '').trim() && blank(x.s) && blank(x.e) ? null : x);
       if (Array.isArray(c.hours.week)) c.hours.week = c.hours.week.map(d => d && blank(d.s) && blank(d.e) && !String(d.brk || '').trim() ? null : d);
-      if (!c.hours.live) delete c.hours.liveAt;
     }
     if (c.perdiem) Object.keys(c.perdiem).forEach(k => { const v = c.perdiem[k]; if (v == null || v === '' || (typeof v === 'object' && !Object.keys(v).length)) delete c.perdiem[k]; });
     return c;
@@ -2110,13 +2221,16 @@ details.help li::marker { color: var(--ink-3); }
   }
   const moveUrl = payload => location.origin + location.pathname + '#move=' + payload;
 
-  // ---- save: the share sheet when it takes files (AirDrop, Save to Files), else a download ----
+  // ---- save: on a phone or tablet the share sheet when it takes files (AirDrop, Save to Files), else a download.
+  // A computer always downloads: desktop Safari and Chrome/Edge on Windows share files too, but their menus can't save to disk ----
+  const touchOnly = () => { try { return matchMedia('(hover: none) and (pointer: coarse)').matches; } catch (e) { return false; } };
   async function saveBackup() {
+    if (!canStore()) { msg(NOSTORE, true); return; } // the saved state would be empty or old
     const b = bundle(), txt = JSON.stringify(b, null, 1), name = 'shift-hours-backup-' + b.saved.slice(0, 10) + '.json';
     try {
       const f = new File([txt], name, { type: 'application/json' });
-      if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'Shift Hours backup' }); msg('Backup sent to the share sheet.'); return; }
-    } catch (e) { if (e && e.name === 'AbortError') return; }
+      if (touchOnly() && navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'Shift Hours backup' }); msg('Backup sent to the share sheet.'); return; }
+    } catch (e) { if (e && e.name === 'AbortError') { msg('Backup not saved: the share sheet was closed.', true); return; } }
     const a = document.createElement('a'), url = URL.createObjectURL(new Blob([txt], { type: 'application/json' }));
     a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
@@ -2125,8 +2239,9 @@ details.help li::marker { color: var(--ink-3); }
   // ---- restore: pick the file, read it, then the same "Replace / Keep mine" question as a move ----
   let pending = null;
   function offer(b, from) {
+    if (!b.hours && !b.perdiem) { dropHash(); msg(from === 'file' ? 'That backup has nothing saved in it, so nothing was changed.' : 'That move link has nothing saved in it, so nothing was changed.', true); return; }
     pending = b;
-    $('inText').innerHTML = '<b>' + (from === 'file' ? 'A backup file is ready' : 'A week from another device is ready') + ':</b> ' + describe(b).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '. Replace what is on this device?';
+    $('inText').innerHTML = '<b>' + (from === 'file' ? 'A backup file is ready' : 'A week from another device is ready') + ':</b> ' + (describe(b) + '.' + losses(b)).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + ' Replace what is on this device?';
     $('movePanel').hidden = true; $('inPanel').hidden = false; msg('');
     const hr = document.querySelector('#viewSeg [data-v="hr"]'); if (hr && hr.getAttribute('aria-pressed') !== 'true') hr.click();
     $('inPanel').scrollIntoView({ block: 'nearest' }); $('inYes').focus();
@@ -2137,7 +2252,8 @@ details.help li::marker { color: var(--ink-3); }
     f.text().then(t => { const b = parse(t); if (!isBundle(b)) { msg('That file is not a Shift Hours backup.', true); return; } offer(b, 'file'); }, () => msg('Could not read that file.', true));
   });
   $('inYes').addEventListener('click', () => { if (pending) apply(pending); });
-  $('inNo').addEventListener('click', () => { pending = null; $('inPanel').hidden = true; try { if (/move=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); } catch (e) {} });
+  const dropHash = () => { try { if (/move=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); } catch (e) {} };
+  $('inNo').addEventListener('click', () => { pending = null; $('inPanel').hidden = true; dropHash(); });
 
   // ---- move: a QR code and a link that carry the week ----
   let qrLoad = null;
@@ -2151,6 +2267,7 @@ details.help li::marker { color: var(--ink-3); }
   let link = '';
   async function openMove() {
     const panel = $('movePanel'); $('inPanel').hidden = true; msg('');
+    if (!canStore()) { panel.hidden = true; msg(NOSTORE.replace('back up', 'move your data'), true); return; }
     panel.hidden = false; $('qrBox').innerHTML = ''; $('qrBox').textContent = '';
     try {
       link = moveUrl(await encode(bundle()));
@@ -2175,7 +2292,8 @@ details.help li::marker { color: var(--ink-3); }
   // ---- arriving with #move=...: ask before replacing anything ----
   function checkMove() {
     const m = /(?:^#|&)move=([A-Za-z0-9_-]+)/.exec(location.hash);
-    if (m) decode(m[1]).then(b => { if (isBundle(b)) offer(b, 'link'); else msg('That move link is not from Shift Hours.', true); }, e => msg(e && e.message && /browser/.test(e.message) ? e.message : 'That move link is damaged. Make a new one on the other device.', true));
+    // a link that can't be used leaves the address bar, so a reload doesn't bring the error back
+    if (m) decode(m[1]).then(b => { if (isBundle(b)) offer(b, 'link'); else { dropHash(); msg('That move link is not from Shift Hours.', true); } }, e => { dropHash(); msg(e && e.message && /browser/.test(e.message) ? e.message : 'That move link is damaged. Make a new one on the other device.', true); });
   }
   checkMove();
   window.addEventListener('hashchange', checkMove); // a link pasted into a tab that already shows the page
