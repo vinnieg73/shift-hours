@@ -2158,13 +2158,15 @@ details.help li::marker { color: var(--ink-3); }
   }
   const moveUrl = payload => location.origin + location.pathname + '#move=' + payload;
 
-  // ---- save: the share sheet when it takes files (AirDrop, Save to Files), else a download ----
+  // ---- save: on a phone or tablet the share sheet when it takes files (AirDrop, Save to Files), else a download.
+  // A computer always downloads: desktop Safari and Chrome/Edge on Windows share files too, but their menus can't save to disk ----
+  const touchOnly = () => { try { return matchMedia('(hover: none) and (pointer: coarse)').matches; } catch (e) { return false; } };
   async function saveBackup() {
     const b = bundle(), txt = JSON.stringify(b, null, 1), name = 'shift-hours-backup-' + b.saved.slice(0, 10) + '.json';
     try {
       const f = new File([txt], name, { type: 'application/json' });
-      if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'Shift Hours backup' }); msg('Backup sent to the share sheet.'); return; }
-    } catch (e) { if (e && e.name === 'AbortError') return; }
+      if (touchOnly() && navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: 'Shift Hours backup' }); msg('Backup sent to the share sheet.'); return; }
+    } catch (e) { if (e && e.name === 'AbortError') { msg('Backup not saved: the share sheet was closed.', true); return; } }
     const a = document.createElement('a'), url = URL.createObjectURL(new Blob([txt], { type: 'application/json' }));
     a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
