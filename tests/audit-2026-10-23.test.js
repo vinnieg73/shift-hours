@@ -78,6 +78,11 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sha-'));
     await B.p.setInputFiles('#bkFile', path.join(tmp, 'denver.json')); await offerShown(B.p);
     const t2 = await T(B.p, '#inText');
     ok('M1: a file with per diem says it replaces this device\'s per diem', /replaces[^.]*per diem for Seattle, WA/i.test(t2), t2);
+    await B.p.click('#inNo');
+    fs.writeFileSync(path.join(tmp, 'pdonly.json'), JSON.stringify(bundle(null, { sel: { t: 'p', st: 'CO', n: 'Denver' }, ch: null, leave: '', back: '', given: {} })));
+    await B.p.setInputFiles('#bkFile', path.join(tmp, 'pdonly.json')); await offerShown(B.p);
+    const t3 = await T(B.p, '#inText');
+    ok('M1: a per-diem-only file does not claim an empty week, and says the week stays', !/empty week/.test(t3) && /week and calculator stay/.test(t3), t3);
     noErr('M1', B);
   }
 
@@ -159,6 +164,11 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sha-'));
     await P.p.clock.runFor(27 * 3600e3); // Mon 9 AM
     await P.p.fill('#startIn', '900'); await tap(P.p, '#startIn-am'); await P.p.fill('#endIn', '500'); await tap(P.p, '#endIn-pm'); await P.p.waitForTimeout(50);
     ok('M4: a typed shift on Monday goes to Mon', (await T(P.p, '#addWeek')) === 'Add to Mon', await T(P.p, '#addWeek'));
+    // correcting the start of a punched shift keeps it on the punch-in day
+    await tap(P.p, '#clear'); await P.p.clock.runFor(4 * 24 * 3600e3 + 13 * 3600e3); // Fri 10 PM
+    await tap(P.p, '#punch'); await P.p.clock.runFor(8 * 3600e3); await tap(P.p, '#punch');
+    await P.p.fill('#startIn', '945'); await P.p.$eval('#startIn', e => e.blur()); await P.p.waitForTimeout(50);
+    ok('M4: a corrected punch-in time stays on the punch-in day', (await T(P.p, '#addWeek')) === 'Add to Fri' && (await T(P.p, '#hm')).startsWith('8.25'), (await T(P.p, '#addWeek')) + ' ' + (await T(P.p, '#hm')));
     noErr('M4', P);
   }
 
@@ -189,6 +199,14 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sha-'));
     await tap(Q.p, '#punch'); await Q.p.clock.runFor(7 * 3600e3); await tap(Q.p, '#punch'); await Q.p.waitForTimeout(50);
     ok('M5: spring forward, 10 PM to 6 AM punched is 7.00', (await Q.p.$eval('#endIn', e => e.value)) === '600' && (await T(Q.p, '#hm')).startsWith('7.00'), await T(Q.p, '#hm'));
     noErr('M5 spring', Q);
+    // punched in during the first 1 AM hour, out 45 minutes later in the repeated hour (reads earlier than the start)
+    const W = await mk({ clock: new Date('2026-11-01T05:30:00Z') }); // 1:30 AM EDT
+    await W.p.goto(base); await W.p.evaluate(() => localStorage.clear()); await W.p.reload(); await W.p.waitForTimeout(200);
+    await tap(W.p, '#punch'); await W.p.clock.runFor(45 * 60e3); await tap(W.p, '#punch'); await W.p.waitForTimeout(50); // 1:15 AM EST
+    ok('M5: 1:30 AM EDT to 1:15 AM EST punched is 0.75', (await W.p.$eval('#endIn', e => e.value)) === '115' && (await T(W.p, '#hm')).startsWith('0.75'), await T(W.p, '#hm'));
+    await tap(W.p, '#addWeek'); await W.p.waitForTimeout(50);
+    ok('M5: and 0.75 in the week', (await T(W.p, '#wDec')) === '0.75', await T(W.p, '#wDec'));
+    noErr('M5 repeated hour', W);
     // saved by main: an old punch time left behind under a typed shift is not used
     const O = await mk({ clock: new Date('2026-11-01T12:00:00Z'), seed: { [HK]: hours({ start: { v: '900', ap: 'pm' }, end: { v: '600', ap: 'am' }, liveAt: new Date('2026-11-01T02:00:00Z').getTime() }) } });
     await O.p.goto(base); await O.p.waitForTimeout(200);
