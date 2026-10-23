@@ -969,7 +969,8 @@ details.help li::marker { color: var(--ink-3); }
   const flush = () => {
     clearTimeout(saveT); saveT = 0;
     const txt = JSON.stringify(S); if (txt === last) return;
-    try { localStorage.setItem(KEY, txt); last = txt; } catch (e) {}
+    // storage full or turned off: the Your data card says so (it listens for this event)
+    try { localStorage.setItem(KEY, txt); last = txt; } catch (e) { document.dispatchEvent(new Event('shift-hours-save-failed')); }
   };
   const save = () => { clearTimeout(saveT); saveT = setTimeout(flush, 250); };
   window.addEventListener('pagehide', flush);
@@ -1837,7 +1838,7 @@ details.help li::marker { color: var(--ink-3); }
   };
   let S;
   try { S = norm(JSON.parse(localStorage.getItem(KEY))); } catch (e) { S = norm(null); }
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { document.dispatchEvent(new Event('shift-hours-save-failed')); } };
 
   // ---- data (fetched the first time the view opens) ----
   let D = null, loading = null, failed = false, cur = null; // cur = resolved item for S.sel
@@ -2102,6 +2103,10 @@ details.help li::marker { color: var(--ink-3); }
   const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const parse = t => { try { return t ? JSON.parse(t) : null; } catch (e) { return null; } };
   const msg = (t, bad) => { const m = $('dataMsg'); m.textContent = t; m.hidden = !t; m.classList.toggle('bad', !!bad); };
+  // a save that failed (storage full or turned off) is said here, not lost quietly
+  document.addEventListener('shift-hours-save-failed', () => { const m = $('dataMsg'); if (m.hidden || !m.classList.contains('bad')) msg('This browser is not saving your changes (its storage is full or turned off), so they will be gone when the page closes.', true); });
+  const canStore = () => { try { localStorage.setItem('shift-hours-probe', '1'); localStorage.removeItem('shift-hours-probe'); return true; } catch (e) { return false; } };
+  const NOSTORE = 'Can’t back up: this browser is not saving your data (its storage is full or turned off).';
   const bundle = () => ({ app: 'shift-hours', v: 1, saved: new Date().toISOString(), hours: parse(get(HK)), perdiem: parse(get(PK)), view: get(VK) || 'hr' });
   const isBundle = b => !!b && typeof b === 'object' && b.app === 'shift-hours' && (b.hours == null || typeof b.hours === 'object') && (b.perdiem == null || typeof b.perdiem === 'object');
   const daysOf = h => (h && Array.isArray(h.week) ? h.week : []).filter(d => d && ((d.s && String(d.s.v || '').trim()) || (d.e && String(d.e.v || '').trim()))).length;
@@ -2173,6 +2178,7 @@ details.help li::marker { color: var(--ink-3); }
   // A computer always downloads: desktop Safari and Chrome/Edge on Windows share files too, but their menus can't save to disk ----
   const touchOnly = () => { try { return matchMedia('(hover: none) and (pointer: coarse)').matches; } catch (e) { return false; } };
   async function saveBackup() {
+    if (!canStore()) { msg(NOSTORE, true); return; } // the saved state would be empty or old
     const b = bundle(), txt = JSON.stringify(b, null, 1), name = 'shift-hours-backup-' + b.saved.slice(0, 10) + '.json';
     try {
       const f = new File([txt], name, { type: 'application/json' });
@@ -2214,6 +2220,7 @@ details.help li::marker { color: var(--ink-3); }
   let link = '';
   async function openMove() {
     const panel = $('movePanel'); $('inPanel').hidden = true; msg('');
+    if (!canStore()) { panel.hidden = true; msg(NOSTORE.replace('back up', 'move your data'), true); return; }
     panel.hidden = false; $('qrBox').innerHTML = ''; $('qrBox').textContent = '';
     try {
       link = moveUrl(await encode(bundle()));
