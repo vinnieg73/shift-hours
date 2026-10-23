@@ -838,6 +838,7 @@ details.help li::marker { color: var(--ink-3); }
       <div class="qr" id="qrBox" role="img" aria-label="QR code that carries this week to another device"></div>
       <div class="dside">
         <p>On the other device, point its camera at this code, or open the link there. The link carries your week, so send it only to yourself.</p>
+        <p>An iPhone opens the link in Safari, not in Shift Hours on its home screen. For the home-screen app, use Save backup here and Restore there.</p>
         <div class="dkeys"><button type="button" class="key" id="bkCopy">Copy link</button><button type="button" class="key" id="bkShare" hidden>Send link</button><button type="button" class="ghost" id="bkClose">Close</button></div>
       </div>
     </div>
@@ -1919,7 +1920,10 @@ details.help li::marker { color: var(--ink-3); }
   }
   function choose(h) {
     if (!h) return;
-    cur = h; S.sel = h.kind === 'zip' ? { t: 'z', z: h.zip } : { t: 'p', st: h.st, n: h.n }; S.ch = null;
+    const sel = h.kind === 'zip' ? { t: 'z', z: h.zip } : { t: 'p', st: h.st, n: h.n };
+    // meals given were for the trip to the last place, so another place starts with none taken off
+    if (JSON.stringify(sel) !== JSON.stringify(S.sel)) S.given = {};
+    cur = h; S.sel = sel; S.ch = null;
     q.value = ''; closeSug(); $('pdErr').hidden = true; save(); render(); q.blur();
   }
   q.addEventListener('input', () => { if (!D) ensureData(); showSug(); });
@@ -1940,7 +1944,8 @@ details.help li::marker { color: var(--ink-3); }
   q.addEventListener('blur', () => setTimeout(closeSug, 250));
 
   // ---- rates card ----
-  function nowIdx() { const t = new Date(), a = parseD(D.start), b = parseD(D.end); return t >= a && t <= new Date(b.getFullYear(), b.getMonth(), b.getDate() + 1) ? fyIdx(t) : 0; }
+  const inFy = t => { const a = parseD(D.start), b = parseD(D.end); return t >= a && t <= new Date(b.getFullYear(), b.getMonth(), b.getDate() + 1); };
+  function nowIdx() { const t = new Date(); return inFy(t) ? fyIdx(t) : 0; }
   function renderRates() {
     const empty = $('pdEmpty'), box = $('pdRates');
     if (!D) {
@@ -1974,10 +1979,13 @@ details.help li::marker { color: var(--ink-3); }
     } else { chBox.hidden = true; chBox.innerHTML = ''; }
     if (a == null) { nums.hidden = true; $('pdCty').textContent = ''; $('pdStatus').textContent = cur.label + ': pick a rate area'; return; }
     nums.hidden = false;
-    const A = D.areas[a], L = A[4], X = A[5] || null, dod = !!(X && X.dod), mm = X && X.mie ? X.mie : null, m = mm ? mm[ni] : A[3], sp = D.mie[m];
+    const A = D.areas[a], L = A[4], X = A[5] || null, dod = !!(X && X.dod), mm = X && X.mie ? X.mie : null;
+    // in a month whose season changes mid-month, the big numbers are today's rate (the grid shows the rate on the 1st)
+    const t = new Date(), midNow = !!(X && X.seasons) && inFy(t) && X.seasons.some(sn => !/\/01$/.test(sn[0]) && +sn[0].slice(0, 2) === t.getMonth() + 1);
+    const rt = midNow ? PDcore.rateOn(a, t) : null, Ln = rt ? rt.lodging : L[ni], m = rt ? rt.mie : mm ? mm[ni] : A[3], sp = D.mie[m];
     $('pdCty').textContent = a === 0 ? 'Standard rate: this county isn’t on GSA’s list' : dod ? 'Defense Department rate area: ' + A[0] + ', ' + A[1] : 'Rate area: ' + A[0] + ', ' + A[1] + ' · ' + A[2];
-    $('pdLk').textContent = 'Lodging in ' + D.months[ni];
-    $('pdL').innerHTML = '<span class="cur">$</span>' + L[ni];
+    $('pdLk').textContent = midNow ? 'Lodging today' : 'Lodging in ' + D.months[ni];
+    $('pdL').innerHTML = '<span class="cur">$</span>' + Ln;
     $('pdM').innerHTML = '<span class="cur">$</span>' + m;
     const hi = Math.max(...L), lo = Math.min(...L);
     $('pdMonths').innerHTML = L.map((v, i) => '<div class="mo' + (i === ni ? ' now' : '') + (hi !== lo && v === lo ? ' lo' : '') + '"><span>' + D.months[i] + '</span><b>$' + v + '</b></div>').join('');
@@ -1997,7 +2005,7 @@ details.help li::marker { color: var(--ink-3); }
     if (new Date() < parseD(D.start)) b.push('<span class="badge">FY ' + D.fy + ' rates start ' + fmtD(parseD(D.start), 1) + '</span>');
     if (new Date() > new Date(parseD(D.end).getTime() + 864e5)) b.push('<span class="badge err">FY ' + D.fy + ' rates; newer ones may apply</span>');
     $('pdBadges').innerHTML = b.join('');
-    $('pdStatus').textContent = cur.label + ': lodging $' + L[ni] + ' a night, M&IE $' + m + ' a day';
+    $('pdStatus').textContent = cur.label + ': lodging $' + Ln + ' a night, M&IE $' + m + ' a day';
   }
   $('pdChoices').addEventListener('click', e => { const b = e.target.closest('.choice'); if (!b) return; S.ch = +b.dataset.a; save(); render(); });
 
@@ -2055,8 +2063,10 @@ details.help li::marker { color: var(--ink-3); }
   }
   function render() { renderRates(); renderTrip(); }
   const set = (fn) => { fn(); save(); render(); };
-  $('pdLeave').addEventListener('change', e => set(() => { S.leave = e.target.value; if (S.back && S.leave && S.back < S.leave) S.back = S.leave; }));
-  $('pdBack').addEventListener('change', e => set(() => { S.back = e.target.value; }));
+  // meals given on days outside the trip are dropped, so a later trip on those dates starts clean
+  const trimGiven = () => { if (S.leave && S.back && S.back >= S.leave) Object.keys(S.given).forEach(k => { if (k < S.leave || k > S.back) delete S.given[k]; }); };
+  $('pdLeave').addEventListener('change', e => set(() => { S.leave = e.target.value; if (S.back && S.leave && S.back < S.leave) S.back = S.leave; trimGiven(); }));
+  $('pdBack').addEventListener('change', e => set(() => { S.back = e.target.value; trimGiven(); }));
   $('pdRows').addEventListener('click', e => { const b = e.target.closest('.mchip'); if (!b) return; set(() => { const g = (Array.isArray(S.given[b.dataset.k]) ? S.given[b.dataset.k] : [false, false, false]).slice(); g[+b.dataset.j] = !g[+b.dataset.j]; S.given[b.dataset.k] = g; }); });
   $('pdClear').addEventListener('click', () => set(() => { S.leave = ''; S.back = ''; S.given = {}; }));
   $('pdCopy').addEventListener('click', () => {
@@ -2069,8 +2079,9 @@ details.help li::marker { color: var(--ink-3); }
   $('pdForm').addEventListener('submit', e => e.preventDefault());
   // another tab changed the per diem state
   window.addEventListener('storage', e => {
-    if (e.storageArea !== localStorage || e.key !== KEY || !e.newValue) return;
-    try { S = norm(JSON.parse(e.newValue)); cur = D ? restore() : null; render(); } catch (x) {}
+    if (e.storageArea !== localStorage || e.key !== KEY) return;
+    // removed there (null) means nothing saved: take that too, so this tab doesn't save its old trip back
+    try { S = norm(e.newValue ? JSON.parse(e.newValue) : null); cur = D ? restore() : null; render(); } catch (x) {}
   });
 
   window.__perdiem = { core: PDcore, compute, setView, ensureData, get S() { return S; } };
@@ -2227,7 +2238,8 @@ details.help li::marker { color: var(--ink-3); }
   // ---- arriving with #move=...: ask before replacing anything ----
   function checkMove() {
     const m = /(?:^#|&)move=([A-Za-z0-9_-]+)/.exec(location.hash);
-    if (m) decode(m[1]).then(b => { if (isBundle(b)) offer(b, 'link'); else msg('That move link is not from Shift Hours.', true); }, e => msg(e && e.message && /browser/.test(e.message) ? e.message : 'That move link is damaged. Make a new one on the other device.', true));
+    // a link that can't be used leaves the address bar, so a reload doesn't bring the error back
+    if (m) decode(m[1]).then(b => { if (isBundle(b)) offer(b, 'link'); else { dropHash(); msg('That move link is not from Shift Hours.', true); } }, e => { dropHash(); msg(e && e.message && /browser/.test(e.message) ? e.message : 'That move link is damaged. Make a new one on the other device.', true); });
   }
   checkMove();
   window.addEventListener('hashchange', checkMove); // a link pasted into a tab that already shows the page
