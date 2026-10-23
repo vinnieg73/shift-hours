@@ -934,7 +934,7 @@ details.help li::marker { color: var(--ink-3); }
   // the clock-change fields (outAt, week[i].adj) also live in a side key that a page from before 2026-10-23 never
   // touches: such a page drops them when it re-saves KEY, and they are put back where the day still matches
   const XKEY = 'shift-hours-v1x';
-  let S, last = null, lastX = null, lastRead = null; // lastRead: the stored text adopt() last took // last: the stored text this tab last read or wrote
+  let S, last = null, lastRead = null; // lastRead: the stored text adopt() last took // last: the stored text this tab last read or wrote
   try { last = localStorage.getItem(KEY); S = JSON.parse(last) || null; } catch (e) { S = null; }
   function normalise(raw) {
     const D = JSON.parse(JSON.stringify(DEFAULT));
@@ -976,6 +976,13 @@ details.help li::marker { color: var(--ink-3); }
     return T;
   }
   reapply(S);
+  // the side key always matches this tab's state (also after a load or an adopt that saved nothing), so an older
+  // tab's next save can't strip a correction for good. It writes only the side key, never KEY, so no tab answers it
+  function writeX() {
+    const x = JSON.stringify({ liveAt: S.liveAt, outAt: S.outAt, days: S.week.map(d => d.adj ? { sig: sig(d), adj: d.adj } : null) });
+    try { if (localStorage.getItem(XKEY) !== x) localStorage.setItem(XKEY, x); } catch (e) {}
+  }
+  writeX();
   let saveT = 0;
   // writes only when this tab's state differs from what it last read or wrote, so an idle
   // older tab being hidden or closed cannot put its stale copy over another tab's edits
@@ -984,8 +991,7 @@ details.help li::marker { color: var(--ink-3); }
     const txt = JSON.stringify(S); if (txt === last) return;
     // storage full or turned off: the Your data card says so (it listens for this event)
     try { localStorage.setItem(KEY, txt); last = txt; lastRead = null; } catch (e) { document.dispatchEvent(new Event('shift-hours-save-failed')); return; }
-    const x = JSON.stringify({ liveAt: S.liveAt, outAt: S.outAt, days: S.week.map(d => d.adj ? { sig: sig(d), adj: d.adj } : null) });
-    if (x !== lastX) try { localStorage.setItem(XKEY, x); lastX = x; } catch (e) {}
+    writeX();
   };
   const save = () => { clearTimeout(saveT); saveT = setTimeout(flush, 250); };
   window.addEventListener('pagehide', flush);
@@ -1145,8 +1151,10 @@ details.help li::marker { color: var(--ink-3); }
     if (!S.liveAt || !(S.live || (S.outAt && Date.now() - S.outAt < 12 * 3600e3))) return 0;
     const p0 = new Date(S.liveAt), mod = d => d.getHours() * 60 + d.getMinutes();
     // the start: the punch-in moment, or a corrected start time placed on that day (or the day either side), within 3 h of it
+    // (each clock time also an hour either way: on the night clocks go back, 1:15 AM happens twice and the Date
+    // constructor only gives the first)
     const st = mod(p0) === a ? p0 : [-1, 0, 1].map(k => new Date(p0.getFullYear(), p0.getMonth(), p0.getDate() + k, 0, a))
-      .filter(d => mod(d) === a && Math.abs(d - p0) <= 3 * 3600e3).sort((x, y) => Math.abs(x - p0) - Math.abs(y - p0))[0];
+      .flatMap(d => [d, new Date(+d + 3600e3), new Date(+d - 3600e3)]).filter(d => mod(d) === a && Math.abs(d - p0) <= 3 * 3600e3).sort((x, y) => Math.abs(x - p0) - Math.abs(y - p0))[0];
     if (!st) return 0;
     // the end: now while live, or the punch-out moment while the end box shows it, else that clock time after the start
     const end = [S.live ? Date.now() : 0, S.outAt].map(t => t ? new Date(t) : null).find(d => d && mod(d) === b % 1440 && d > st && d - st < 26 * 3600e3)
@@ -1505,6 +1513,7 @@ details.help li::marker { color: var(--ink-3); }
     last = keepWeek ? null : JSON.stringify(next); lastRead = txt;
     const act = document.activeElement, id = act && act.id, sel = act && act.selectionStart != null ? [act.selectionStart, act.selectionEnd] : null;
     S = next; moved.clear();
+    writeX();
     build();
     if (id && $(id)) { const el = $(id); el.focus(); if (sel) try { el.setSelectionRange(sel[0], sel[1]); } catch (e) {} }
   }
@@ -1680,7 +1689,7 @@ details.help li::marker { color: var(--ink-3); }
     if (S.liveAt) { S.liveAt = 0; S.outAt = 0; }
     openDay = -1; build();
     const row = $('wr' + i); if (row) { row.classList.remove('just'); void row.offsetWidth; row.classList.add('just'); }
-    b.classList.add('ok'); b.textContent = 'Added to ' + DAYS[i];
+    b.classList.add('ok'); b.textContent = 'Added to ' + DAYS[i] + ' \u00b7 ' + (r.total / 60).toFixed(2);
     b._t = setTimeout(() => { b.classList.remove('ok'); update(); }, 1600);
     announce('Added to ' + FULLDAY[i] + ': ' + (r.total / 60).toFixed(2) + ' hours', true);
   });

@@ -64,7 +64,7 @@ const T0 = new Date(2026, 9, 16, 8, 45, 0); // Fri Oct 16 2026, 8:45 local
   await tap('#addWeek'); await p.waitForTimeout(50);
   const fri = await p.evaluate(() => ({ s: document.getElementById('w4s').value, e: document.getElementById('w4e').value, b: document.getElementById('w4b').value, h: document.getElementById('wh4').textContent, mode: document.getElementById('wr4').className, key: document.getElementById('addWeek').textContent, ok: document.getElementById('addWeek').classList.contains('ok'), just: document.getElementById('wr4').classList.contains('just') }));
   ok('Add to Fri: row 1030-647, 30 min, 7.78, folded', fri.s === '1030' && fri.e === '647' && fri.b === '30' && fri.h.startsWith('7.78') && /m-fold/.test(fri.mode) && fri.just, JSON.stringify(fri));
-  ok('Add to Fri: key says Added', fri.key === 'Added to Fri' && fri.ok, fri.key);
+  ok('Add to Fri: key says Added', fri.key === 'Added to Fri · 7.78' && fri.ok, fri.key);
   ok('week total 7.78', (await T('#wDec')) === '7.78', await T('#wDec'));
   await p.screenshot({ path: require('path').join(process.env.SHOTS || require('os').tmpdir(), `added-${w}-${scheme}.png`), fullPage: true });
   await p.clock.runFor(2000); await p.waitForTimeout(50);
@@ -75,7 +75,7 @@ const T0 = new Date(2026, 9, 16, 8, 45, 0); // Fri Oct 16 2026, 8:45 local
   await p.clock.runFor(3500); await p.waitForTimeout(50);
   ok('arm times out', (await T('#addWeek')) === 'Add to Fri', await T('#addWeek'));
   await tap('#addWeek'); await tap('#addWeek'); await p.waitForTimeout(50);
-  ok('second tap replaces', (await T('#addWeek')) === 'Added to Fri' && (await T('#wDec')) === '7.78');
+  ok('second tap replaces', (await T('#addWeek')) === 'Added to Fri · 7.78' && (await T('#wDec')) === '7.78');
   // Clear resets the clock state
   await tap('#clear'); await p.waitForTimeout(50);
   const st = await p.evaluate(() => { const S = window.__hours.S; return { live: S.live, at: S.liveAt, key: document.getElementById('punch').textContent }; });

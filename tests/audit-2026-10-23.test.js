@@ -280,6 +280,36 @@ if (OLD) over['/old.html'] = OLD;
     ok('R3: with an old tab open, one edit is one save each way, not a loop', ev <= 2, ev + ' saves seen by the old tab in 3 s');
     noErr('R3 loop', Z);
   }
+  // ---------- third review (74f8f1a) ----------
+  {
+    // a start retyped inside the repeated 1 AM hour is the second (EST) one when that is nearer the punch
+    const P = await mk({ clock: new Date('2026-11-01T06:30:00Z') }); // 1:30 AM EST, after the clocks went back
+    await P.p.goto(base); await P.p.evaluate(() => localStorage.clear()); await P.p.reload(); await P.p.waitForTimeout(200);
+    await tap(P.p, '#punch'); await P.p.clock.runFor(4 * 3600e3); await tap(P.p, '#punch'); await P.p.waitForTimeout(50); // 5:30 AM EST
+    const got = [];
+    for (const v of ['115', '145', '130']) { await P.p.fill('#startIn', v); await P.p.$eval('#startIn', e => e.blur()); await P.p.waitForTimeout(50); got.push(v + '=' + (await T(P.p, '#hm')).replace('hrs', '')); }
+    ok('R4: retyped start in the repeated hour adds no hour (1:15 = 4.25, 1:45 = 3.75, 1:30 = 4.00)', got.join(' ') === '115=4.25 145=3.75 130=4.00', got.join(' '));
+    await tap(P.p, '#addWeek'); await P.p.waitForTimeout(50);
+    ok('R4: the Add confirmation names the hours filed', (await T(P.p, '#addWeek')) === 'Added to Sun · 4.00', await T(P.p, '#addWeek'));
+    noErr('R4', P);
+  }
+  if (OLD) {
+    // state restored with a day's correction, never edited here: an older tab's save must not strip it
+    const N = await mk();
+    // exactly what Restore writes: the page's own saved form, with no side key
+    await N.p.goto(base);
+    const txt = await N.p.evaluate(h => JSON.stringify(window.__hours.normalise(h)), hours({ week: [blankDay(), blankDay(), blankDay(), blankDay(), blankDay(), Object.assign(day('1000', 'pm', '600', 'am'), { adj: 60 }), blankDay()] }));
+    await N.p.goto(base + 'manifest.webmanifest'); // not the app, so no save on leaving overwrites the seed
+    await N.p.evaluate(([k, t]) => { localStorage.clear(); localStorage.setItem(k, t); }, [HK, txt]);
+    await N.p.goto(base); await N.p.waitForTimeout(300);
+    ok('R5: loaded day with its correction reads 9.00', (await T(N.p, '#wDec')) === '9.00', await T(N.p, '#wDec'));
+    const O = await N.ctx.newPage(); await O.goto(base + 'old.html'); await O.waitForTimeout(300);
+    await O.$eval('#roundSeg button[data-r="0"]', e => e.click()); await O.waitForTimeout(800);
+    ok('R5: after an older tab saves, still 9.00', (await T(N.p, '#wDec')) === '9.00', await T(N.p, '#wDec'));
+    await N.p.reload(); await N.p.waitForTimeout(300);
+    ok('R5: and after a reload', (await T(N.p, '#wDec')) === '9.00', await T(N.p, '#wDec'));
+    noErr('R5', N);
+  }
 
   // ---------- M6: Save backup downloads on a computer; a closed share sheet says nothing was saved ----------
   {
