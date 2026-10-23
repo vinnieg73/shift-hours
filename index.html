@@ -950,7 +950,8 @@ details.help li::marker { color: var(--ink-3); }
       roundBreaks: (raw.roundBreaks === 0 || raw.roundBreaks === '0') ? 0 : 1,
       start: fld(raw.start, D.start), end: fld(raw.end, D.end),
       liveAt: +raw.liveAt > 0 ? +raw.liveAt : 0, live: raw.live === true && +raw.liveAt > 0,
-      br: D.br.map((d, i) => { const b = obj(br[i]) ? br[i] : {}; return { min: str(b.min), s: fld(b.s, d.s), e: fld(b.e, d.e) }; }),
+      // a missing break row or time is blank (a move link sends empty rows as null), never the example times in DEFAULT
+      br: D.br.map((d, i) => { const b = obj(br[i]) ? br[i] : {}; return { min: str(b.min), s: obj(b.s) ? fld(b.s, d.s) : { v: '', ap: d.s.ap }, e: obj(b.e) ? fld(b.e, d.e) : { v: '', ap: d.e.ap } }; }),
       week: D.week.map((d, i) => { const w = obj(wk[i]) ? wk[i] : {}; return { s: obj(w.s) ? fld(w.s, d.s) : { ...d.s }, e: obj(w.e) ? fld(w.e, d.e) : { ...d.e }, brk: str(w.brk) }; })
     };
   }
@@ -2062,22 +2063,39 @@ details.help li::marker { color: var(--ink-3); }
   const msg = (t, bad) => { const m = $('dataMsg'); m.textContent = t; m.hidden = !t; m.classList.toggle('bad', !!bad); };
   const bundle = () => ({ app: 'shift-hours', v: 1, saved: new Date().toISOString(), hours: parse(get(HK)), perdiem: parse(get(PK)), view: get(VK) || 'hr' });
   const isBundle = b => !!b && typeof b === 'object' && b.app === 'shift-hours' && (b.hours == null || typeof b.hours === 'object') && (b.perdiem == null || typeof b.perdiem === 'object');
+  const daysOf = h => (h && Array.isArray(h.week) ? h.week : []).filter(d => d && ((d.s && String(d.s.v || '').trim()) || (d.e && String(d.e.v || '').trim()))).length;
+  const daysTxt = n => n + (n === 1 ? ' day' : ' days') + ' filled in the week';
+  const calcOf = h => !!(h && ((h.start && String(h.start.v || '').trim()) || (h.end && String(h.end.v || '').trim())));
+  const pdOf = p => { const sel = p && p.sel; return sel ? (sel.t === 'z' ? 'per diem for ZIP ' + sel.z : 'per diem for ' + sel.n + ', ' + sel.st) : ''; };
+  const andList = l => l.length > 1 ? l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1] : l[0] || '';
   // "4 days filled, Seattle, WA, saved Oct 16 at 9:12 PM"
   function describe(b) {
     const parts = [];
-    const wk = b.hours && Array.isArray(b.hours.week) ? b.hours.week : [];
-    const days = wk.filter(d => d && ((d.s && String(d.s.v || '').trim()) || (d.e && String(d.e.v || '').trim()))).length;
-    parts.push(days ? days + (days === 1 ? ' day' : ' days') + ' filled in the week' : 'an empty week');
+    const days = daysOf(b.hours);
+    parts.push(days ? daysTxt(days) : 'an empty week');
     if (b.hours && b.hours.start && String(b.hours.start.v || '').trim()) parts.push('a shift in the calculator');
-    const sel = b.perdiem && b.perdiem.sel; if (sel) parts.push(sel.t === 'z' ? 'per diem for ZIP ' + sel.z : 'per diem for ' + sel.n + ', ' + sel.st);
+    if (pdOf(b.perdiem)) parts.push(pdOf(b.perdiem));
     const d = new Date(b.saved);
     const when = isNaN(d) ? '' : ', saved ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     return parts.join(', ') + when;
   }
+  // what a Replace would overwrite on this device, and what it leaves alone (a part the bundle does not carry)
+  function losses(b) {
+    const h = parse(get(HK)), p = parse(get(PK)), gone = [], kept = [];
+    if (b.hours) {
+      const n = daysOf(h);
+      if (n) gone.push(daysTxt(n));
+      if (calcOf(h)) gone.push('the shift in the calculator');
+      if (h && h.live === true) gone.push('the running punch clock');
+    }
+    if (pdOf(p)) (b.perdiem ? gone : kept).push(pdOf(p));
+    return (gone.length ? ' It replaces this device’s ' + andList(gone) + '.' : '') + (kept.length ? ' This device’s ' + andList(kept) + ' stays.' : '');
+  }
   function apply(b) {
     try {
-      if (b.hours) localStorage.setItem(HK, JSON.stringify(b.hours)); else localStorage.removeItem(HK);
-      if (b.perdiem) localStorage.setItem(PK, JSON.stringify(b.perdiem)); else localStorage.removeItem(PK);
+      // a part the bundle does not carry (no per diem used on the other device) stays as it is here
+      if (b.hours) localStorage.setItem(HK, JSON.stringify(b.hours));
+      if (b.perdiem) localStorage.setItem(PK, JSON.stringify(b.perdiem));
       if (b.view === 'pd' || b.view === 'hr') localStorage.setItem(VK, b.view);
     } catch (e) { msg('Could not save on this device.', true); return; }
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
@@ -2087,11 +2105,11 @@ details.help li::marker { color: var(--ink-3); }
   const b64u = bytes => { let s = ''; bytes.forEach(x => { s += String.fromCharCode(x); }); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
   const unb64u = t => { const b = t.replace(/-/g, '+').replace(/_/g, '/'); return Uint8Array.from(atob(b + '='.repeat((4 - b.length % 4) % 4)), c => c.charCodeAt(0)); };
   const pipe = (bytes, S, kind) => new Response(new Blob([bytes]).stream().pipeThrough(new S(kind))).arrayBuffer().then(a => new Uint8Array(a));
-  // a smaller link: empty break rows and empty week days travel as null (the page fills defaults back in)
+  // a smaller link: empty week days travel as null (the page fills blank days back in). Break rows go as they are,
+  // because a page from before 2026-10-23 fills a missing break row with example times
   function compact(b) {
     const c = JSON.parse(JSON.stringify(b)), blank = f => !f || !String(f.v || '').trim();
     if (c.hours) {
-      if (Array.isArray(c.hours.br)) c.hours.br = c.hours.br.map(x => x && !String(x.min || '').trim() && blank(x.s) && blank(x.e) ? null : x);
       if (Array.isArray(c.hours.week)) c.hours.week = c.hours.week.map(d => d && blank(d.s) && blank(d.e) && !String(d.brk || '').trim() ? null : d);
       if (!c.hours.live) delete c.hours.liveAt;
     }
@@ -2125,8 +2143,9 @@ details.help li::marker { color: var(--ink-3); }
   // ---- restore: pick the file, read it, then the same "Replace / Keep mine" question as a move ----
   let pending = null;
   function offer(b, from) {
+    if (!b.hours && !b.perdiem) { dropHash(); msg(from === 'file' ? 'That backup has nothing saved in it, so nothing was changed.' : 'That move link has nothing saved in it, so nothing was changed.', true); return; }
     pending = b;
-    $('inText').innerHTML = '<b>' + (from === 'file' ? 'A backup file is ready' : 'A week from another device is ready') + ':</b> ' + describe(b).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + '. Replace what is on this device?';
+    $('inText').innerHTML = '<b>' + (from === 'file' ? 'A backup file is ready' : 'A week from another device is ready') + ':</b> ' + (describe(b) + '.' + losses(b)).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])) + ' Replace what is on this device?';
     $('movePanel').hidden = true; $('inPanel').hidden = false; msg('');
     const hr = document.querySelector('#viewSeg [data-v="hr"]'); if (hr && hr.getAttribute('aria-pressed') !== 'true') hr.click();
     $('inPanel').scrollIntoView({ block: 'nearest' }); $('inYes').focus();
@@ -2137,7 +2156,8 @@ details.help li::marker { color: var(--ink-3); }
     f.text().then(t => { const b = parse(t); if (!isBundle(b)) { msg('That file is not a Shift Hours backup.', true); return; } offer(b, 'file'); }, () => msg('Could not read that file.', true));
   });
   $('inYes').addEventListener('click', () => { if (pending) apply(pending); });
-  $('inNo').addEventListener('click', () => { pending = null; $('inPanel').hidden = true; try { if (/move=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); } catch (e) {} });
+  const dropHash = () => { try { if (/move=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); } catch (e) {} };
+  $('inNo').addEventListener('click', () => { pending = null; $('inPanel').hidden = true; dropHash(); });
 
   // ---- move: a QR code and a link that carry the week ----
   let qrLoad = null;
