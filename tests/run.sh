@@ -11,7 +11,7 @@ SRV=$!
 trap 'kill $SRV 2>/dev/null' EXIT
 for i in $(seq 50); do curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break; sleep 0.1; done
 BASE="http://127.0.0.1:$PORT/"
-TESTS=${*:-"smoke backup punch oconus audit"}
+TESTS=${*:-"smoke backup punch oconus audit months"}
 fail=0
 for t in $TESTS; do
   for combo in "402 874 1 light" "402 874 1 dark" "1280 900 0 light" "1280 900 0 dark"; do
