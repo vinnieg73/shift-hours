@@ -136,7 +136,7 @@ h1 span { font-weight: 400; color: var(--ink-3); }
 .sub { font-size: 13px; color: var(--ink-3); margin-top: 3px; }
 .fmtbox { display: flex; align-items: center; gap: 10px; flex: none; }
 .fmtbox .seg button { flex: none; width: 58px; padding: 0 4px; font: 500 13px var(--mono); }
-body[data-view="pd"] .fmtbox { visibility: hidden; }
+body[data-view="pd"] .fmtbox, body[data-view="mo"] .fmtbox { visibility: hidden; }
 
 /* ---------- segmented controls: a recessed track, a thumb that slides ---------- */
 .seg { display: flex; gap: 0; min-width: 0; }
@@ -170,6 +170,7 @@ body[data-view="pd"] .fmtbox { visibility: hidden; }
 .viewbar .seg button[aria-pressed="true"]::before { background: var(--ember); opacity: 1; }
 .viewbar .seg button[data-v="hr"] { --vi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='9' r='7.2'/%3E%3Cpath d='M9 5V9L11.8 10.6'/%3E%3C/svg%3E"); }
 .viewbar .seg button[data-v="pd"] { --vi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='5.2' width='14' height='10' rx='2'/%3E%3Cpath d='M6.4 5.2V3.6A1.2 1.2 0 0 1 7.6 2.4H10.4A1.2 1.2 0 0 1 11.6 3.6V5.2M2 9.6H16'/%3E%3C/svg%3E"); }
+.viewbar .seg button[data-v="mo"] { --vi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18' fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.2' y='3.4' width='13.6' height='12.4' rx='2'/%3E%3Cpath d='M2.2 7.4H15.8M6 1.8V4.6M12 1.8V4.6'/%3E%3C/svg%3E"); }
 .viewbar .seg.slide::before { border-color: var(--rule-strong); box-shadow: 0 1px 0 var(--lip), 0 1px 3px rgba(31, 27, 22, .10); }
 
 /* ---------- panels ---------- */
@@ -606,11 +607,77 @@ details.help li::marker { color: var(--ink-3); }
 #pdView .dmie span + span { white-space: normal; }
 #pdView .trip2 details.help { margin: 12px calc(-1 * var(--pad)) -12px; }
 
+/* ================================================================
+   Months: working hours in each month, 8 for every Monday to Friday.
+   A federal holiday is a paid day, so it still counts 8; it is marked,
+   not taken off. Scoped to #moView.
+   ================================================================ */
+#moView .mogrid { display: grid; grid-template-columns: minmax(0, 1fr); background: var(--card); border: 1px solid var(--rule); border-radius: var(--r); }
+#moView .card { padding: 12px var(--pad) 14px; }
+#moView .card + .card { border-top: 1px solid var(--rule); }
+#moView .mnav { display: flex; align-items: center; gap: 6px; }
+#moView .mnav b { flex: 1 1 auto; min-width: 0; font: 600 20px/1.2 var(--sans); letter-spacing: -.015em; color: var(--ink); }
+#moView .mstep { flex: none; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid var(--rule-strong); border-radius: var(--rc); background: var(--raise); color: var(--ink-2); box-shadow: 0 1px 0 var(--lip); }
+#moView .mstep:active { transform: translateY(1px); box-shadow: 0 0 0 var(--lip); }
+#moView .mstep::before { content: ""; width: 8px; height: 8px; border-left: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor; transform: translateX(2px) rotate(45deg); }
+#moView .mstep.nx::before { transform: translateX(-2px) rotate(-135deg); }
+#moView .mnav .ghost { height: 40px; min-width: 0; }
+#moView .readout .big { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 12px 14px 16px; }
+#moHrs { display: inline-flex; align-items: baseline; min-width: 0; color: var(--ember); font: 600 64px/1 var(--mono); letter-spacing: -.03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#moHrs small { margin-left: 8px; font: 500 16px var(--mono); letter-spacing: 0; color: var(--ink-3); }
+#moView .mline { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-height: 44px; padding: 8px 12px 8px 16px; border-top: 1px solid var(--rule); font: 500 14px/1.3 var(--mono); color: var(--ink-2); }
+#moView .mline span + span { color: var(--ink-3); }
+/* the calendar: Monday first, weekdays in wells, weekends plain */
+#moView .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; margin-top: 12px; }
+#moView .cal .dh { padding-bottom: 2px; text-align: center; font: 500 13px/1.2 var(--mono); color: var(--ink-3); }
+#moView .cal .d { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 44px; border-radius: 4px; font: 500 14px/1 var(--mono); color: var(--ink-3); }
+#moView .cal .d.w { background: var(--well); color: var(--ink); box-shadow: inset 0 0 0 1px var(--rule); }
+#moView .cal .d.h::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--ink); }
+#moView .cal .d.now { outline: 1px solid var(--ember); outline-offset: -1px; background: var(--stamp-wash); color: var(--ember); font-weight: 600; }
+#moView .cal .d.now.h::after { background: var(--ember); }
+#moView .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 13px; color: var(--ink-3); }
+#moView .legend i { display: inline-block; vertical-align: -2px; width: 14px; height: 14px; margin-right: 6px; border-radius: 3px; background: var(--well); box-shadow: inset 0 0 0 1px var(--rule-strong); }
+#moView .legend i.h { position: relative; background: none; box-shadow: none; }
+#moView .legend i.h::after { content: ""; position: absolute; left: 4.5px; top: 4.5px; width: 5px; height: 5px; border-radius: 50%; background: var(--ink); }
+/* this month's holidays */
+#moView .hols { margin-top: 12px; border-top: 1px solid var(--rule); }
+#moView .hols:empty { display: none; }
+#moView .hol { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; align-items: baseline; column-gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--rule); }
+#moView .hol b { font: 500 14px/1.3 var(--mono); color: var(--ink); white-space: nowrap; }
+#moView .hol span { font-size: 14px; line-height: 1.35; color: var(--ink); }
+#moView .hol span em { font-style: normal; color: var(--ink-3); }
+#moView .hol i { font: 500 13px/1.3 var(--mono); font-style: normal; color: var(--ink-3); white-space: nowrap; }
+/* the year: every month's hours, tap one to open it */
+#moView .whead { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; }
+#moView .ytot { font: 500 14px var(--mono); color: var(--ink-2); white-space: nowrap; }
+#moView .months { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; margin-top: 8px; }
+#moView .mo { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-width: 0; height: 52px; padding: 0; border: 0; border-radius: 4px; background: var(--well); box-shadow: inset 0 0 0 1px var(--rule); color: var(--ink); }
+#moView .mo span { font: 500 13px/1 var(--sans); color: var(--ink-3); }
+#moView .mo b { font: 600 16px/1 var(--mono); letter-spacing: -.02em; color: var(--ink); }
+#moView .mo[aria-current="true"] { box-shadow: inset 0 0 0 1px var(--key-on-line); background: var(--key-on); }
+#moView .mo[aria-current="true"] span { color: var(--ink); }
+#moView .mo.now { position: relative; outline: 1px solid var(--ember); outline-offset: -1px; }
+#moView .mo.now b { color: var(--ember); }
+#moView .ysub { margin-top: 10px; font: 500 13px/1.4 var(--mono); color: var(--ink-3); }
+#moView details.help { margin: 12px calc(-1 * var(--pad)) -14px; }
+/* the whole year's holidays: only on a wide screen, where the year column has room */
+#moView .yhols { display: none; }
+@media (min-width: 641px) { #moView .months { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-width: 360px) {
+  #moHrs { font-size: 52px; }
+  #moView .hol { grid-template-columns: 84px minmax(0, 1fr) auto; column-gap: 8px; }
+  #moView .cal .d { height: 40px; }
+}
+@media (hover: hover) {
+  #moView .mstep:hover, #moView .mo:hover { color: var(--ink); }
+  #moView .mo:not([aria-current="true"]):hover { box-shadow: inset 0 0 0 1px var(--ink-3); }
+}
+
 /* ---------- phones ---------- */
 @media (max-width: 640px) {
   :root { --lab: 52px; }
   h1 span, .sub, .fmtbox > .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  body[data-view="pd"] .fmtbox { display: none; }
+  body[data-view="pd"] .fmtbox, body[data-view="mo"] .fmtbox { display: none; }
   /* typing hint only while a time box is focused; the same tips live in How it works */
   .entry .hint { display: none; }
   .entry:has(.times .tin:focus) .hint, .entry:has(#startIn:placeholder-shown):has(#endIn:placeholder-shown) .hint { display: block; }
@@ -658,7 +725,7 @@ details.help li::marker { color: var(--ink-3); }
   .mark { width: 36px; height: 36px; }
   h1 { font-size: 19px; }
   .viewbar { margin-bottom: 14px; }
-  .viewbar .seg { width: 320px; }
+  .viewbar .seg { width: 440px; }
   .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .col-in { display: flex; flex-direction: column; min-width: 0; }
   .entry { padding: 18px var(--pad); }
@@ -675,6 +742,21 @@ details.help li::marker { color: var(--ink-3); }
   #pdView .pdgrid > .result { grid-area: res; border-top: 0; border-left: 1px solid var(--rule); align-self: stretch; }
   #pdView .pdgrid > .trip2 { grid-area: trip2; }
   #pdView .trip2 details.help { margin-bottom: -18px; }
+  #moView .mogrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; }
+  #moView .card { padding: 18px var(--pad); }
+  #moView .card + .card { border-top: 0; border-left: 1px solid var(--rule); }
+  #moHrs { font-size: 76px; }
+  #moView .readout .big { padding: 22px 16px 20px 20px; }
+  #moView .mline { padding-left: 20px; }
+  #moView .months { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #moView .myear { display: flex; flex-direction: column; }
+  #moView .yhols { display: block; margin-top: 18px; }
+  #moView .yhols .label { display: block; margin-bottom: 4px; font: 600 14px/1.2 var(--sans); color: var(--ink); }
+  #moView .yhols .hol { padding: 7px 0; }
+  #moView .yhols .hol.cur b, #moView .yhols .hol.cur span { color: var(--ink); }
+  #moView .yhols .hol:not(.cur) b, #moView .yhols .hol:not(.cur) span { color: var(--ink-2); }
+  #moView details.help { margin-top: auto; margin-bottom: -18px; }
+  #moView .yhols + details.help { border-top: 1px solid var(--rule); }
 }
 @media (hover: hover) {
   .seg button:not([aria-pressed="true"]):hover { color: var(--ink); }
@@ -716,7 +798,7 @@ details.help li::marker { color: var(--ink-3); }
   </header>
   <div class="viewbar">
     <div class="seg" role="group" aria-label="Calculator" id="viewSeg">
-      <button type="button" data-v="hr" aria-pressed="true">Hours</button><button type="button" data-v="pd" aria-pressed="false">Per diem</button>
+      <button type="button" data-v="hr" aria-pressed="true">Hours</button><button type="button" data-v="pd" aria-pressed="false">Per diem</button><button type="button" data-v="mo" aria-pressed="false">Months</button>
     </div>
   </div>
 
@@ -913,6 +995,41 @@ details.help li::marker { color: var(--ink-3); }
       </details>
     </section>
   </form>
+  </main>
+  <main id="moView" hidden>
+  <div class="mogrid">
+    <section class="card mmonth" aria-labelledby="moName">
+      <div class="sr" id="moStatus" role="status" aria-live="polite" aria-atomic="true"></div>
+      <div class="mnav">
+        <button type="button" class="mstep pv" id="moPrev" aria-label="Previous month"></button>
+        <b id="moName">Month</b>
+        <button type="button" class="ghost" id="moToday" hidden>This month</button>
+        <button type="button" class="mstep nx" id="moNext" aria-label="Next month"></button>
+      </div>
+      <div class="readout">
+        <div class="big"><div id="moHrs">0<small>hrs</small></div><button type="button" class="copy hero-copy" id="moCopy" aria-label="Copy this month's working hours">Copy</button></div>
+        <div class="mline"><span id="moDays"></span><span id="moHol"></span></div>
+      </div>
+      <div class="cal" id="moCal" role="img"></div>
+      <div class="legend" aria-hidden="true"><span><i></i>Workday, 8 hrs</span><span><i class="h"></i>Federal holiday, still 8 hrs</span></div>
+      <div class="hols" id="moHols"></div>
+    </section>
+    <section class="card myear" aria-labelledby="moYearTitle">
+      <div class="whead"><span class="label" id="moYearTitle">2026 by month</span><span class="ytot" id="moYTot"></span></div>
+      <div class="months" id="moMonths"></div>
+      <p class="ysub" id="moYSub"></p>
+      <div class="yhols" id="moYHols" aria-label="Federal holidays this year"></div>
+      <details class="help">
+        <summary>How months work</summary>
+        <ul>
+          <li>Every Monday to Friday counts 8 working hours. Saturdays and Sundays count 0.</li>
+          <li>A federal holiday is a paid day off, so it still counts 8 hours. It is marked on the calendar, not taken off the total.</li>
+          <li>When a holiday falls on a Saturday it is observed the Friday before; on a Sunday, the Monday after.</li>
+          <li>The 11 federal holidays: New Year's Day, Martin Luther King Jr. Day, Washington's Birthday, Memorial Day, Juneteenth, Independence Day, Labor Day, Columbus Day, Veterans Day, Thanksgiving and Christmas. Inauguration Day (Washington, DC area only) is not included.</li>
+        </ul>
+      </details>
+    </section>
+  </div>
   </main>
 </div>
 
@@ -1737,6 +1854,101 @@ details.help li::marker { color: var(--ink-3); }
 })();
 </script>
 <script>
+// ---- Months: working hours in each month. Every Monday to Friday is 8 hours; a federal holiday is a paid
+// day, so it still counts 8 and is only marked. Nothing is saved: it always opens on this month ----
+(() => {
+  const $ = id => document.getElementById(id);
+  const HRS = 8;
+  const MN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const DN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const key = (y, m, d) => y * 10000 + (m + 1) * 100 + d;
+  // nth weekday (0 Sun..6 Sat) of a month; n = -1 is the last one
+  function nth(y, m, wd, n) {
+    if (n > 0) { const f = new Date(y, m, 1).getDay(); return 1 + (wd - f + 7) % 7 + (n - 1) * 7; }
+    const last = new Date(y, m + 1, 0); return last.getDate() - (last.getDay() - wd + 7) % 7;
+  }
+  // 5 U.S.C. 6103, observed: Saturday moves to Friday, Sunday to Monday
+  function rawHolidays(y) {
+    const L = [
+      [0, 1, "New Year's Day"], [0, nth(y, 0, 1, 3), 'Martin Luther King Jr. Day'], [1, nth(y, 1, 1, 3), "Washington's Birthday"],
+      [4, nth(y, 4, 1, -1), 'Memorial Day'], [6, 4, 'Independence Day'], [8, nth(y, 8, 1, 1), 'Labor Day'],
+      [9, nth(y, 9, 1, 2), 'Columbus Day'], [10, 11, 'Veterans Day'], [10, nth(y, 10, 4, 4), 'Thanksgiving Day'], [11, 25, 'Christmas Day']];
+    if (y >= 2021) L.splice(4, 0, [5, 19, 'Juneteenth']);
+    return L.map(([m, d, n]) => {
+      const t = new Date(y, m, d), wd = t.getDay(), obs = wd === 6 ? -1 : wd === 0 ? 1 : 0;
+      const o = new Date(y, m, d + obs);
+      return { y: o.getFullYear(), m: o.getMonth(), d: o.getDate(), name: n, moved: obs !== 0 };
+    });
+  }
+  const hcache = {};
+  // a year's observed holidays; New Year's Day on a Saturday is observed on Dec 31 of the year before
+  function holidays(y) {
+    if (!hcache[y]) hcache[y] = rawHolidays(y).concat(rawHolidays(y + 1)).filter(h => h.y === y);
+    return hcache[y];
+  }
+  function month(y, m) {
+    const n = new Date(y, m + 1, 0).getDate(), hol = holidays(y).filter(h => h.m === m);
+    const hset = new Set(hol.map(h => h.d));
+    let work = 0;
+    for (let d = 1; d <= n; d++) { const wd = new Date(y, m, d).getDay(); if (wd !== 0 && wd !== 6) work++; }
+    return { y, m, n, work, hrs: work * HRS, hol, hset };
+  }
+  const fmtN = x => x.toLocaleString('en-US');
+  const today = () => { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth(), d: t.getDate() }; };
+  let T = today(), Y = T.y, M = T.m;
+
+  const holRow = (x, cur) => '<div class="hol' + (cur ? ' cur' : '') + '"><b>' + DN[new Date(x.y, x.m, x.d).getDay()] + ' ' + MN[x.m].slice(0, 3) + ' ' + x.d + '</b><span>' + x.name + (x.moved ? ' <em>(observed)</em>' : '') + '</span><i>' + HRS + ' hrs</i></div>';
+  function render() {
+    T = today();
+    const r = month(Y, M), isNow = Y === T.y && M === T.m;
+    $('moName').textContent = MN[M] + ' ' + Y;
+    $('moToday').hidden = isNow;
+    $('moHrs').innerHTML = fmtN(r.hrs) + '<small>hrs</small>';
+    $('moDays').textContent = r.work + ' workdays × ' + HRS + ' hrs';
+    $('moHol').textContent = r.hol.length ? 'includes ' + r.hol.length + (r.hol.length === 1 ? ' holiday' : ' holidays') : 'no holidays';
+    // calendar, Monday first
+    const lead = (new Date(Y, M, 1).getDay() + 6) % 7;
+    let h = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => '<span class="dh" aria-hidden="true">' + d.slice(0, 2) + '</span>').join('');
+    for (let i = 0; i < lead; i++) h += '<span class="d" aria-hidden="true"></span>';
+    for (let d = 1; d <= r.n; d++) {
+      const wd = new Date(Y, M, d).getDay(), w = wd !== 0 && wd !== 6;
+      h += '<span class="d' + (w ? ' w' : '') + (r.hset.has(d) ? ' h' : '') + (isNow && d === T.d ? ' now' : '') + '" aria-hidden="true">' + d + '</span>';
+    }
+    $('moCal').innerHTML = h;
+    $('moCal').setAttribute('aria-label', MN[M] + ' ' + Y + ': ' + r.work + ' workdays' + (r.hol.length ? ', including ' + r.hol.map(x => x.name).join(', ') : ''));
+    $('moHols').innerHTML = r.hol.map(x => holRow(x, false)).join('');
+    // the year
+    let tot = 0, wk = 0;
+    $('moYearTitle').textContent = Y + ' by month';
+    $('moMonths').innerHTML = MN.map((n, i) => {
+      const x = month(Y, i); tot += x.hrs; wk += x.work;
+      return '<button type="button" class="mo' + (Y === T.y && i === T.m ? ' now' : '') + '" data-m="' + i + '" aria-current="' + (i === M) + '" aria-label="' + n + ' ' + Y + ', ' + x.hrs + ' hours"><span>' + n.slice(0, 3) + '</span><b>' + x.hrs + '</b></button>';
+    }).join('');
+    $('moYTot').textContent = fmtN(tot) + ' hrs';
+    $('moYSub').textContent = wk + ' workdays, ' + holidays(Y).length + ' of them federal holidays';
+    $('moYHols').innerHTML = '<span class="label">' + Y + ' federal holidays</span>' + holidays(Y).map(x => holRow(x, x.m === M)).join('');
+  }
+  function go(y, m) {
+    const d = new Date(y, m, 1); Y = d.getFullYear(); M = d.getMonth(); render();
+    $('moStatus').textContent = MN[M] + ' ' + Y + ': ' + month(Y, M).hrs + ' working hours';
+  }
+  $('moPrev').addEventListener('click', () => go(Y, M - 1));
+  $('moNext').addEventListener('click', () => go(Y, M + 1));
+  $('moToday').addEventListener('click', () => { T = today(); go(T.y, T.m); $('moNext').focus(); });
+  $('moMonths').addEventListener('click', e => { const b = e.target.closest('.mo'); if (b) go(Y, +b.dataset.m); });
+  $('moCopy').addEventListener('click', () => {
+    const btn = $('moCopy'), txt = String(month(Y, M).hrs);
+    const done = (ok) => { btn.classList.toggle('ok', ok); btn.textContent = ok ? 'Copied' : 'Select to copy'; clearTimeout(btn._t); btn._t = setTimeout(() => { btn.classList.remove('ok'); btn.textContent = 'Copy'; }, 1500); };
+    const legacy = () => { try { const ta = document.createElement('textarea'); ta.value = txt; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); done(ok); } catch (e) { done(false); } };
+    try { navigator.clipboard.writeText(txt).then(() => done(true), legacy); } catch (e) { legacy(); }
+  });
+  // a page left open past midnight or into a new month moves "today" along
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('moView').hidden) render(); });
+  window.__months = { holidays, month, show: render, go };
+  render();
+})();
+</script>
+<script>
 // ---- per diem view (GSA lodging + M&IE rates). Kept apart from the hours code: its own state, its own errors ----
 (() => {
   /* pd-core:start (pure lookup code, no DOM; scripts/check_perdiem.mjs runs this exact block) */
@@ -1916,15 +2128,16 @@ details.help li::marker { color: var(--ink-3); }
   function pill(seg) { const b = seg.querySelector('button[aria-pressed="true"]'); if (!b || !b.offsetWidth) return; seg.style.setProperty('--px', b.offsetLeft + 'px'); seg.style.setProperty('--pw', b.offsetWidth + 'px'); seg.style.setProperty('--po', '1'); }
   function setView(v, keep) {
     document.body.dataset.view = v;
-    $('hrView').hidden = v !== 'hr'; $('pdView').hidden = v !== 'pd';
+    $('hrView').hidden = v !== 'hr'; $('pdView').hidden = v !== 'pd'; $('moView').hidden = v !== 'mo';
     viewSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
-    if (sub) sub.textContent = v === 'pd' ? 'Hotel and meal rates for any U.S. city.' : subHr;
+    if (sub) sub.textContent = v === 'pd' ? 'Hotel and meal rates for any U.S. city.' : v === 'mo' ? 'Working hours in every month, 8 a weekday.' : subHr;
     if (!keep) {
       try { localStorage.setItem(VKEY, v); } catch (e) {}
-      // a #perdiem / #hours link picked the first view; after a tap, the remembered view wins
-      if (location.hash === '#perdiem' || location.hash === '#hours') try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+      // a #perdiem / #hours / #months link picked the first view; after a tap, the remembered view wins
+      if (location.hash === '#perdiem' || location.hash === '#hours' || location.hash === '#months') try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
     }
     if (v === 'pd') ensureData();
+    if (v === 'mo' && window.__months) window.__months.show();
     requestAnimationFrame(() => document.querySelectorAll('.seg.slide').forEach(pill));
   }
   viewSeg.addEventListener('click', e => { const b = e.target.closest('button'); if (b && b.dataset.v) setView(b.dataset.v); });
@@ -2130,10 +2343,10 @@ details.help li::marker { color: var(--ink-3); }
 
   window.__perdiem = { core: PDcore, compute, setView, ensureData, get S() { return S; } };
   render();
-  const fromHash = () => location.hash === '#perdiem' ? 'pd' : location.hash === '#hours' ? 'hr' : null;
+  const fromHash = () => location.hash === '#perdiem' ? 'pd' : location.hash === '#hours' ? 'hr' : location.hash === '#months' ? 'mo' : null;
   let v = fromHash();
   if (!v) { try { v = localStorage.getItem(VKEY); } catch (e) {} }
-  setView(v === 'pd' ? 'pd' : 'hr', true);
+  setView(v === 'pd' || v === 'mo' ? v : 'hr', true);
   window.addEventListener('hashchange', () => { const h = fromHash(); if (h) setView(h); });
 })();
 </script>
@@ -2190,7 +2403,7 @@ details.help li::marker { color: var(--ink-3); }
       // the hours page's clock-change side copy (shift-hours-v1x) belongs to the hours being replaced
       if (b.hours) { localStorage.setItem(HK, JSON.stringify(b.hours)); localStorage.removeItem(HK + 'x'); }
       if (b.perdiem) localStorage.setItem(PK, JSON.stringify(b.perdiem));
-      if (b.view === 'pd' || b.view === 'hr') localStorage.setItem(VK, b.view);
+      if (b.view === 'pd' || b.view === 'hr' || b.view === 'mo') localStorage.setItem(VK, b.view);
     } catch (e) { msg('Could not save on this device.', true); return; }
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
     location.reload();
