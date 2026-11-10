@@ -1,7 +1,7 @@
 {
   "name": "Shift Hours",
   "short_name": "Shift Hours",
-  "description": "Hours worked between two times, minus breaks, in decimal hours and h:mm.",
+  "description": "Hours worked between two times, minus breaks, in decimal hours and h:mm. Plus U.S. per diem rates and working hours by month.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
