@@ -376,7 +376,6 @@ details.help li::marker { color: var(--ink-3); }
    An open day: the day and its hours on the left, the boxes beside them, note and Done below. */
 .card.week { margin-top: 12px; padding: 4px var(--pad) var(--pad); background: var(--card); border: 1px solid var(--rule); border-radius: var(--r); --wdc: 44px; --whc: 58px; }
 .whead { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 52px; }
-.wcols { display: none; }
 #wrows { display: flex; flex-wrap: wrap; column-gap: 6px; border-top: 1px solid var(--rule); }
 .wrow { flex: 0 0 100%; min-width: 0; border-bottom: 1px solid var(--rule); }
 .wrow.m-add { flex: 1 1 0; min-width: 44px; max-width: 76px; padding: 7px 0; border-bottom: 0; }
@@ -569,7 +568,7 @@ details.help li::marker { color: var(--ink-3); }
 #pdView .bd { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; row-gap: 8px; align-items: baseline; }
 #pdView .bd dt { font: 500 14px/1.2 var(--sans); color: var(--ink); white-space: nowrap; }
 #pdView .bd dd { font-size: 14px; line-height: 1.2; color: var(--ink-3); }
-#pdView .bd dd:not(.amt) { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pdView .bd dd:not(.amt) { min-width: 0; }
 #pdView .bd dd.amt { font: 500 14px/1.2 var(--mono); color: var(--ink); white-space: nowrap; text-align: right; }
 #pdView .tripout .big { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 14px 12px 14px 14px; border: 1px solid var(--rule); border-radius: var(--rc); background: var(--well); }
 #pdView .bd:empty + .big { margin-top: 0; }
@@ -867,7 +866,7 @@ details.help li::marker { color: var(--ink-3); }
       <div class="sr" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
       <div class="rhead"><span class="label">Decimal hours worked</span><button type="button" class="ghost" id="clear">Clear</button></div>
       <div class="readout">
-      <div class="big"><div class="hm" id="hm">0.00</div><button type="button" class="copy hero-copy" id="copyDec" aria-label="Copy decimal hours">Copy</button></div>
+      <div class="big"><div class="hm" id="hm">0.00</div><button type="button" class="copy" id="copyDec" aria-label="Copy decimal hours">Copy</button></div>
       <div class="hmline"><span class="hm2" id="hm2">0:00</span><span class="hmu">h:mm</span><span class="mx"><span id="mins">0</span> min<span class="brkx" id="brk"></span></span><button type="button" class="copy" id="copyHm" aria-label="Copy hours and minutes">Copy</button></div>
       </div>
       <span id="dec" hidden>0.00</span>
@@ -893,7 +892,6 @@ details.help li::marker { color: var(--ink-3); }
       <button type="button" class="ghost" id="clearWeek">Clear week</button>
     </div>
     <div class="wlist">
-      <div class="wcols" aria-hidden="true"><span>Day</span><span>In</span><span>Out</span><span>Brk</span><span>Hrs</span></div>
       <div id="wrows"></div>
       <div class="wtotal">
         <div>
@@ -971,7 +969,7 @@ details.help li::marker { color: var(--ink-3); }
       </div>
       <div class="tripout" id="pdTripOut">
         <dl class="bd" id="pdBreak"></dl>
-        <div class="big"><div class="hm" id="pdTotal"></div><button type="button" class="copy hero-copy" id="pdCopy" aria-label="Copy trip total">Copy</button></div>
+        <div class="big"><div class="hm" id="pdTotal"></div><button type="button" class="copy" id="pdCopy" aria-label="Copy trip total">Copy</button></div>
         <p class="pdnote" id="pdNote"></p>
         <details class="days" id="pdDaysDisc" open>
           <summary>Day by day <span>tap a meal you were given</span></summary>
@@ -987,7 +985,7 @@ details.help li::marker { color: var(--ink-3); }
           <li>Per diem is a daily allowance for hotel (lodging) plus meals and incidentals (M&amp;IE) when you travel for work.</li>
           <li>Lodging is a cap per night, and it can change by month. You're paid what the room cost, up to the cap. Taxes are claimed separately.</li>
           <li>M&amp;IE is the full daily rate on middle days and 75% on the day you leave and the day you return.</li>
-          <li>If a meal was given to you (at a conference, say), its amount comes off that day. Meals on a plane or a free hotel breakfast don't count.</li>
+          <li>If a meal was given to you (at a conference, say), its amount comes off that day. You always keep that day's incidentals, so a day never drops below that amount. Meals on a plane or a free hotel breakfast don't count.</li>
           <li>In the 48 states and DC, GSA sets rates by county. A ZIP gives GSA's exact answer; a city that crosses into another rate area lets you pick. Places not on GSA's list get the standard rate.</li>
           <li>Alaska, Hawaii, Puerto Rico, Guam, the U.S. Virgin Islands, American Samoa and the Northern Mariana Islands use the Defense Department's rates, which are set by town or island and can change by season. The rate year runs Oct 1 to Sep 30.</li>
           <li class="src">Rates: <a href="https://www.gsa.gov/travel/plan-a-trip/per-diem-rates" target="_blank" rel="noopener">GSA per diem files</a> and the <a href="https://www.travel.dod.mil/Travel-Transportation-Rates/Per-Diem/Per-Diem-Rate-Lookup/" target="_blank" rel="noopener">Defense Department's OCONUS file</a>, <span id="pdFyNote">FY 2027</span>. Place names: <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (CC BY 4.0) and the U.S. Census Bureau. Check with your employer; their policy may differ.</li>
@@ -1007,7 +1005,7 @@ details.help li::marker { color: var(--ink-3); }
         <button type="button" class="mstep nx" id="moNext" aria-label="Next month"></button>
       </div>
       <div class="readout">
-        <div class="big"><div id="moHrs">0<small>hrs</small></div><button type="button" class="copy hero-copy" id="moCopy" aria-label="Copy this month's working hours">Copy</button></div>
+        <div class="big"><div id="moHrs">0<small>hrs</small></div><button type="button" class="copy" id="moCopy" aria-label="Copy this month's working hours">Copy</button></div>
         <div class="mline"><span id="moDays"></span><span id="moHol"></span></div>
       </div>
       <div class="cal" id="moCal" role="img"></div>
@@ -1334,12 +1332,12 @@ details.help li::marker { color: var(--ink-3); }
     wrap.appendChild(inp);
     if (S.fmt === '12') {
       const seg = document.createElement('div');
-      seg.className = 'seg ap'; seg.dataset.pos = f.ap; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', label + ' AM or PM');
+      seg.className = 'seg ap'; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', label + ' AM or PM');
       ['am', 'pm'].forEach(v => {
         const btn = document.createElement('button');
         btn.type = 'button'; btn.id = id + '-' + v; btn.textContent = v.toUpperCase();
         btn.setAttribute('aria-pressed', String(f.ap === v));
-        btn.addEventListener('click', () => { f.ap = v; seg.dataset.pos = v; [...seg.children].forEach(c => c.setAttribute('aria-pressed', String(c === btn))); handEdit(f); startSettled(f); update(); });
+        btn.addEventListener('click', () => { f.ap = v; [...seg.children].forEach(c => c.setAttribute('aria-pressed', String(c === btn))); handEdit(f); startSettled(f); update(); });
         seg.appendChild(btn);
       });
       wrap.appendChild(seg);
@@ -1410,7 +1408,6 @@ details.help li::marker { color: var(--ink-3); }
       const ed = mk('div', 'wedit', 'wed' + i); ed.setAttribute('role', 'group'); ed.setAttribute('aria-label', DAYS[i] + ' times');
       const lab = (forId, txt, child, cls) => { const w = mk('div', 'wf ' + cls), l = mk('label', 'wlab'); l.htmlFor = forId; l.textContent = txt; w.append(l, child); return w; };
       const sf = timeField(D.s, id.s, DAYS[i] + ' start', 'wmsg' + i), ef = timeField(D.e, id.e, DAYS[i] + ' end', 'wmsg' + i);
-      sf.classList.add('ws'); ef.classList.add('we');
       [sf, ef].forEach(f => {
         f.querySelector('.tin').placeholder = f === sf ? 'In' : 'Out';
         // on phones only the current AM/PM shows; tapping it flips to the other
@@ -1527,7 +1524,7 @@ details.help li::marker { color: var(--ink-3); }
 
   // ---- punch strip: 24 hour cells, worked time filled in ink (replaces the old 24h dial) ----
   const cells = [];
-  for (let i = 0; i < 24; i++) { const c = document.createElement('span'); c.className = 'cell' + (i % 6 ? '' : ' q'); $('strip').insertBefore(c, $('nowLine')); cells.push(c); }
+  for (let i = 0; i < 24; i++) { const c = document.createElement('span'); c.className = 'cell'; $('strip').insertBefore(c, $('nowLine')); cells.push(c); }
   // minutes [from, from + len) as pieces of one day, split at midnight
   const pieces = (from, len, out) => { len = Math.min(len, 1440); const end = from + len; if (end <= 1440) out.push([from, end]); else out.push([from, 1440], [0, end - 1440]); return out; };
   // where a minute of the day sits along the strip (24 cells with 2px gaps)
@@ -1581,7 +1578,7 @@ details.help li::marker { color: var(--ink-3); }
     const inp = $(id); if (!inp) return;
     if (inp.value !== f.v) inp.value = f.v;
     const seg = inp.closest('.tfield') && inp.closest('.tfield').querySelector('.seg.ap');
-    if (seg) { seg.dataset.pos = f.ap; [...seg.children].forEach(c => c.setAttribute('aria-pressed', String(c.id === id + '-' + f.ap))); }
+    if (seg) [...seg.children].forEach(c => c.setAttribute('aria-pressed', String(c.id === id + '-' + f.ap)));
   }
   function tickLive() {
     if (!S.live) return;
@@ -1815,10 +1812,9 @@ details.help li::marker { color: var(--ink-3); }
     const el = $('hm'); if (txt === prevBig && el.firstChild) return;
     const old = prevBig; prevBig = txt;
     el.classList.toggle('err', !ok);
-    const rev = [...txt].reverse(), orev = [...old].reverse();
+    const orev = [...old].reverse();
     const spans = [...txt].map((c, i) => { const j = txt.length - 1 - i; return '<span class="dg' + (c === '.' ? ' pt' : '') + (old && c !== orev[j] ? ' chg' : '') + '">' + c + '</span>'; });
     el.innerHTML = spans.join('') + (ok ? '<small>hrs</small>' : '');
-    el.classList.add('tick');
   }
   function legacyCopy(txt) {
     try {
@@ -1843,7 +1839,7 @@ details.help li::marker { color: var(--ink-3); }
   function selectText(id) { const el = $(id), r = document.createRange(), u = el.querySelector('small'); r.selectNodeContents(el); if (u) r.setEndBefore(u); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
   copier('copyDec', 'dec'); copier('copyHm', 'hm2'); copier('copyWeek', 'wDec');
 
-  window.__hours = { reapply, parse, toMin, roundMin, span, compute, computeDay, renderWeek, normalise, tickLive, get S() { return S; } };
+  window.__hours = { reapply, parse, toMin, roundMin, span, compute, computeDay, renderWeek, normalise, tickLive, flush, get S() { return S; } };
   // if saved state breaks the page, keep a copy of it (instead of deleting it) and start fresh
   try { build(); tickLive(); } catch (e) {
     console.error(e);
@@ -2245,7 +2241,7 @@ details.help li::marker { color: var(--ink-3); }
     $('pdL').innerHTML = '<span class="cur">$</span>' + Ln;
     $('pdM').innerHTML = '<span class="cur">$</span>' + m;
     const hi = Math.max(...L), lo = Math.min(...L);
-    $('pdMonths').innerHTML = L.map((v, i) => '<div class="mo' + (i === ni ? ' now' : '') + (hi !== lo && v === lo ? ' lo' : '') + '"><span>' + D.months[i] + '</span><b>$' + v + '</b></div>').join('');
+    $('pdMonths').innerHTML = L.map((v, i) => '<div class="mo' + (i === ni ? ' now' : '') + '"><span>' + D.months[i] + '</span><b>$' + v + '</b></div>').join('');
     $('pdLnote').textContent = hi === lo ? 'Same all year' : 'Changes by month';
     $('pdMie').innerHTML = ['Breakfast', 'Lunch', 'Dinner', 'Incidentals'].map((k, i) => '<div><dt>' + k + '</dt><dd>$' + sp[i] + '</dd></div>').join('') +
       '<div class="wide"><dt>Full day</dt><dd>$' + m + '</dd></div><div class="wide travel"><dt>First &amp; last day (75%)</dt><dd>' + whole(m * 0.75) + '</dd></div>';
@@ -2284,12 +2280,13 @@ details.help li::marker { color: var(--ink-3); }
       const travel = n === 1 || i === 0 || i === n - 1, base = travel ? m * 0.75 : m;
       const g = Array.isArray(S.given[k]) ? S.given[k] : [false, false, false];
       const given = [0, 1, 2].map(j => !!g[j]);
-      const off = given.reduce((s, x, j) => s + (x ? split[j] : 0), 0);
-      days.push({ d, k, night, hotel, travel, base, given, off, mie: Math.max(0, base - off), m });
+      // meals given come off in full, but never past the day's incidentals: that amount is always kept (41 CFR 301-11.18)
+      const off = Math.min(given.reduce((s, x, j) => s + (x ? split[j] : 0), 0), Math.max(0, base - (split[3] || 0)));
+      days.push({ d, k, night, hotel, travel, base, given, off, mie: base - off, m });
     }
     const sum = (f) => days.reduce((s, x) => s + f(x), 0), ms = [...new Set(days.map(x => x.m))];
     return { n, nights: n - 1, m: ms.length === 1 ? ms[0] : null, days, dod: PDcore.isDod(ai), hotel: sum(x => x.hotel), full: days.filter(x => !x.travel).length, travelN: days.filter(x => x.travel).length,
-      fullAmt: sum(x => x.travel ? 0 : x.base), travelAmt: sum(x => x.travel ? x.base : 0), off: sum(x => Math.min(x.off, x.base)), total: sum(x => x.hotel + x.mie) };
+      fullAmt: sum(x => x.travel ? 0 : x.base), travelAmt: sum(x => x.travel ? x.base : 0), off: sum(x => x.off), total: sum(x => x.hotel + x.mie) };
   }
   function fmtD(d, long) { return long ? MON[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear() : DOW[d.getDay()] + ' ' + MON[d.getMonth()] + ' ' + d.getDate(); }
   function renderTrip() {
@@ -2316,7 +2313,7 @@ details.help li::marker { color: var(--ink-3); }
       '<div class="dday"><b>' + fmtD(x.d) + '</b><span>' + (r.n === 1 ? 'Same day' : i === 0 ? 'Leave' : i === r.n - 1 ? 'Return' : 'Day ' + (i + 1)) + '</span></div>' +
       (x.night ? '<div class="dhotel">$' + x.hotel + '</div>' : '<div class="dhotel none">No hotel</div>') +
       '<div class="dmeals">' + MEALS.map((mm, j) => '<button type="button" class="mchip" data-k="' + x.k + '" data-j="' + j + '" aria-pressed="' + x.given[j] + '" aria-label="' + MEALN[j] + ' given ' + fmtD(x.d) + '">' + mm + '</button>').join('') + '</div>' +
-      '<div class="dmie"><b>' + usd(x.mie) + '</b><span class="' + (x.travel ? 'travel' : '') + '">' + (x.travel ? '75% day' : 'Full day') + '</span>' + (x.off ? '<span>−$' + x.off + ' given</span>' : '') + '</div></div>').join('');
+      '<div class="dmie"><b>' + usd(x.mie) + '</b><span class="' + (x.travel ? 'travel' : '') + '">' + (x.travel ? '75% day' : 'Full day') + '</span>' + (x.off ? '<span>−' + whole(x.off) + ' given</span>' : '') + '</div></div>').join('');
   }
   function render() { renderRates(); renderTrip(); }
   const set = (fn) => { fn(); save(); render(); };
@@ -2365,7 +2362,11 @@ details.help li::marker { color: var(--ink-3); }
   const canStore = () => { if (saveFailed) return false; try { localStorage.setItem('shift-hours-probe', '1'); localStorage.removeItem('shift-hours-probe'); return true; } catch (e) { return false; } };
   const NOSTORE = 'Can’t back up: this browser is not saving your data (its storage is full or turned off).';
   // hours as saved, with the clock-change fields an older tab may have dropped put back from their side key
-  const hoursNow = () => { const h = parse(get(HK)); try { return h && window.__hours ? window.__hours.reapply(h) : h; } catch (e) { return h; } };
+  // an edit made in the last quarter second is still waiting to be written (the hours page saves on a short delay).
+  // Write it now: a backup or move link then carries it, and after a Replace the page has nothing left to write
+  // over the restored week as it reloads
+  const settle = () => { try { if (window.__hours && window.__hours.flush) window.__hours.flush(); } catch (e) {} };
+  const hoursNow = () => { settle(); const h = parse(get(HK)); try { return h && window.__hours ? window.__hours.reapply(h) : h; } catch (e) { return h; } };
   const bundle = () => ({ app: 'shift-hours', v: 1, saved: new Date().toISOString(), hours: hoursNow(), perdiem: parse(get(PK)), view: get(VK) || 'hr' });
   const isBundle = b => !!b && typeof b === 'object' && b.app === 'shift-hours' && (b.hours == null || typeof b.hours === 'object') && (b.perdiem == null || typeof b.perdiem === 'object');
   const daysOf = h => (h && Array.isArray(h.week) ? h.week : []).filter(d => d && ((d.s && String(d.s.v || '').trim()) || (d.e && String(d.e.v || '').trim()))).length;
@@ -2398,6 +2399,7 @@ details.help li::marker { color: var(--ink-3); }
     return (gone.length ? ' It replaces this device’s ' + andList(gone) + '.' : '') + (kept.length ? ' This device’s ' + andList(kept) + (kept.length > 1 || !b.hours ? ' stay.' : ' stays.') : '');
   }
   function apply(b) {
+    settle();
     try {
       // a part the bundle does not carry (no per diem used on the other device) stays as it is here
       // the hours page's clock-change side copy (shift-hours-v1x) belongs to the hours being replaced

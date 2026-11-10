@@ -105,7 +105,7 @@ const ok = (name, cond, info) => results.push((cond ? 'PASS ' : 'FAIL ') + name 
   ok('days count', (await T('#wDays')).includes('2 days'), await T('#wDays'));
   await overflow('week');
   // week fit on phone: no cell overflow
-  const clipped = await p.evaluate(() => [...document.querySelectorAll('#wrows .tin, #wrows .wh b, #wrows .wh span, .wcols span, #wrows .wday')].filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.id || e.textContent).join(','));
+  const clipped = await p.evaluate(() => [...document.querySelectorAll('#wrows .tin, #wrows .wh b, #wrows .wh span, #wrows .wday')].filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.id || e.textContent).join(','));
   ok('no clipped week cells', !clipped, clipped);
   if (mobile === '1') {
     await openDay(0);
