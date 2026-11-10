@@ -90,7 +90,21 @@ const TRIP = { sel: { t: 'p', st: 'WA', n: 'Seattle' }, ch: null, leave: '2027-0
     const A = await mk(null);
     await A.p.goto(base); await A.p.waitForTimeout(200);
     ok('no hidden leftover week header', await A.p.evaluate(() => !document.querySelector('.wcols')));
+    // ---- 6: How it works is its own row (not folded inside Settings), and Settings opens by itself only on desktop ----
+    const h = await A.p.evaluate(() => { const d = document.getElementById('howDisc'), s = document.getElementById('settingsDisc'); const r = d.querySelector('summary').getBoundingClientRect();
+      return { inside: s.contains(d), inCard: !!d.closest('.card.options'), seen: r.width > 0 && r.height >= 44, settingsOpen: s.open, tip: document.getElementById('helpTip').textContent.length > 10 }; });
+    ok('How it works sits outside Settings, in the options card', !h.inside && h.inCard && h.tip, JSON.stringify(h));
+    ok('How it works shows without opening Settings', h.seen, JSON.stringify(h));
+    ok('Settings opens by itself only at desktop width', h.settingsOpen === (+w >= 900), w + ' ' + h.settingsOpen);
+    const meta = await A.p.evaluate(() => ['meta[name="description"]', 'meta[property="og:description"]', 'meta[name="twitter:description"]'].map(q => document.querySelector(q).content));
+    ok('page and link preview descriptions name per diem and months', meta.every(t => /per diem/i.test(t) && /month/i.test(t)), meta.join(' | '));
     await A.ctx.close();
+    // an upright tablet (one column): Settings stays folded
+    const ctx = await b.newContext({ viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true, colorScheme: scheme, serviceWorkers: 'block' });
+    await ctx.route('**/beacon.min.js', r => r.fulfill({ status: 200, contentType: 'application/javascript', body: '' }));
+    const t = await ctx.newPage(); await t.goto(base); await t.waitForTimeout(200);
+    ok('upright tablet (820px): Settings folded, How it works showing', await t.evaluate(() => !document.getElementById('settingsDisc').open && document.querySelector('#howDisc summary').getBoundingClientRect().height >= 44));
+    await ctx.close();
   }
 
   await b.close();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Work out hours worked between two times, minus breaks, in decimal hours and hours:minutes. Handles overnight shifts and time-clock rounding.">
+<meta name="description" content="Work out hours worked between two times, minus breaks, in decimal hours and hours:minutes. Handles overnight shifts and time-clock rounding. Also looks up U.S. per diem rates and counts the working hours in each month.">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#EEEBE4">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121110">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,7 +17,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Shift Hours">
 <meta property="og:title" content="Shift Hours">
-<meta property="og:description" content="Hours worked between two times, minus breaks, in decimal hours and h:mm.">
+<meta property="og:description" content="Hours worked between two times, minus breaks, in decimal hours and h:mm. Plus U.S. per diem rates and working hours by month.">
 <meta property="og:url" content="https://shifthours.app/">
 <meta property="og:image" content="https://shifthours.app/og.png">
 <meta property="og:image:width" content="1200">
@@ -25,7 +25,7 @@
 <meta property="og:image:alt" content="Shift Hours: a readout showing 8.53 hrs, 8:32 h:mm, for a shift from 8:45 AM to 5:17 PM.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Shift Hours">
-<meta name="twitter:description" content="Hours worked between two times, minus breaks, in decimal hours and h:mm.">
+<meta name="twitter:description" content="Hours worked between two times, minus breaks, in decimal hours and h:mm. Plus U.S. per diem rates and working hours by month.">
 <meta name="twitter:image" content="https://shifthours.app/og.png">
 <meta name="twitter:image:alt" content="Shift Hours: a readout showing 8.53 hrs, 8:32 h:mm, for a shift from 8:45 AM to 5:17 PM.">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}@media (display-mode:standalone){body{min-height:calc(100vh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -841,24 +841,24 @@ details.help li::marker { color: var(--ink-3); }
             <div class="seg" role="group" aria-label="Round breaks" id="roundBreakSeg">
               <button type="button" data-rb="1">Yes</button><button type="button" data-rb="0">No</button>
             </div></div>
-          <details class="help">
-          <summary>How it works</summary>
-          <ul>
-            <li>12 PM is noon and 12 AM is midnight.</li>
-            <li>A dot or comma means decimal hours: 9.5 is 9:30 and 9.25 is 9:15. For clock minutes type 930 or 9:30.</li>
-            <li>If the end time is earlier than the start, the shift runs past midnight into the next day.</li>
-            <li>15-minute rounding uses the 7-minute rule: 9:07 rounds down to 9:00, 9:08 rounds up to 9:15.</li>
-            <li>5-minute rounding: :01–:02 round down, :03–:04 round up. 6-minute (tenth of an hour): :01–:02 down, :03–:05 up.</li>
-            <li>Decimal hours = minutes ÷ 60. For example 7:15 is 7.25 hours.</li>
-            <li>Typing tips: <span id="helpTip"></span></li>
-            <li>The weekly timesheet uses the same clock format and rounding as above. Break is in minutes.</li>
-            <li>Punch in stamps the start time and keeps the end time on the clock until you punch out. Add to day copies the shift into that day's row of the timecard.</li>
-            <li>After the first visit the page opens with no signal. Per diem rates work offline once you have opened that tab.</li>
-            <li>Everything you type is saved only in this browser, and Safari can clear a site's saved data after a week without a visit (not when the page is on your home screen). Save backup keeps a file you can Restore; Move carries the week to another device by link or QR code.</li>
-          </ul>
-        </details>
         </details>
       </div>
+      <details class="help" id="howDisc">
+        <summary>How it works</summary>
+        <ul>
+          <li>12 PM is noon and 12 AM is midnight.</li>
+          <li>A dot or comma means decimal hours: 9.5 is 9:30 and 9.25 is 9:15. For clock minutes type 930 or 9:30.</li>
+          <li>If the end time is earlier than the start, the shift runs past midnight into the next day.</li>
+          <li>15-minute rounding uses the 7-minute rule: 9:07 rounds down to 9:00, 9:08 rounds up to 9:15.</li>
+          <li>5-minute rounding: :01–:02 round down, :03–:04 round up. 6-minute (tenth of an hour): :01–:02 down, :03–:05 up.</li>
+          <li>Decimal hours = minutes ÷ 60. For example 7:15 is 7.25 hours.</li>
+          <li>Typing tips: <span id="helpTip"></span></li>
+          <li>The weekly timesheet uses the same clock format and rounding as above. Break is in minutes.</li>
+          <li>Punch in stamps the start time and keeps the end time on the clock until you punch out. Add to day copies the shift into that day's row of the timecard.</li>
+          <li>After the first visit the page opens with no signal. Per diem rates work offline once you have opened that tab.</li>
+          <li>Everything you type is saved only in this browser, and Safari can clear a site's saved data after a week without a visit (not when the page is on your home screen). Save backup keeps a file you can Restore; Move carries the week to another device by link or QR code.</li>
+        </ul>
+      </details>
     </div>
     </div>
 
@@ -1735,7 +1735,7 @@ details.help li::marker { color: var(--ink-3); }
   $('roundSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.round = +b.dataset.r; build(); } });
   $('roundBreakSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.roundBreaks = +b.dataset.rb; build(); } });
   $('form').addEventListener('submit', e => e.preventDefault());
-  try { if (matchMedia('(min-width: 761px)').matches) $('settingsDisc').open = true; } catch (e) {}
+  try { if (matchMedia('(min-width: 900px)').matches) $('settingsDisc').open = true; } catch (e) {} // same width as the desktop layout
   // Enter jumps to the next box, within the calculator or within the week
   const nextOnEnter = e => {
     if (e.key !== 'Enter' || !e.target.classList.contains('tin')) return;
