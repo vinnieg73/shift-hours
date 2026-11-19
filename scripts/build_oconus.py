@@ -37,7 +37,7 @@ HI_ISLAND_BY_COUNTY = {'Honolulu': 'oahu', 'Hawaii': 'island of hawaii outside h
 HI_ISLAND_BY_PLACE = {'Kaunakakai': 'molokai', 'Hoolehua': 'molokai', 'Kualapuu': 'molokai', 'Maunaloa': 'molokai', 'Lanai City': 'lanai'}
 # names DoD doesn't use but people do
 EXTRA_ALIAS = {('AK', 'BARROW'): ['Utqiagvik'], ('AK', 'JB ELMENDORF-RICHARDSON'): ['JBER', 'Jber'], ('AK', 'DUTCH HARBOR-UNALASKA'): ['Dutch Harbor', 'Unalaska'],
-               ('HI', 'JB PEARL HARBOR-HICKAM'): ['Jbphh', 'JBPHH'], ('PR', 'LUIS MUNOZ MARIN IAP AGS'): ['Luis Munoz Marin Airport'], ('GU', 'GUAM (INCL ALL MIL INSTAL)'): ['Hagatna', 'Agana']}
+               ('HI', 'JB PEARL HARBOR-HICKAM'): ['Jbphh', 'JBPHH'], ('HI', 'KONA'): ['Kailua Kona'], ('PR', 'LUIS MUNOZ MARIN IAP AGS'): ['Luis Munoz Marin Airport'], ('GU', 'GUAM (INCL ALL MIL INSTAL)'): ['Hagatna', 'Agana']}
 # Alaska boroughs are huge, so a borough never stands for a town, except the consolidated city-boroughs that ARE the city
 AK_CITY_BOROUGHS = {'Anchorage', 'Juneau', 'Sitka', 'Wrangell', 'Yakutat', 'Skagway'}
 MONTHS = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep']
@@ -162,7 +162,8 @@ def main():
         rec = [name, st, 'Defense Department rate area', mies[0], lodging, extra]
         i = len(areas); area_idx[(st, loc)] = i; areas.append(rec)
         if loc != '[OTHER]':
-            for a in [name] + aliases:
+            alias_keys[st][key(name)] = i   # a location's own name beats another location's alias (DoD's own KONA row over the island's "Kona")
+            for a in aliases:
                 alias_keys[st].setdefault(key(a), i)
             for a in aliases:
                 if '-' not in loc or a.upper() not in loc: alias_names[st].append((a, i))

@@ -54,7 +54,9 @@ if (OLD) over['/old.html'] = OLD;
   const stored = (p, k) => p.evaluate(k => JSON.parse(localStorage.getItem(k)), k);
   const linkFor = (p, bundle) => p.evaluate(async b => '#move=' + await window.__backup.encode(b), bundle);
   const offerShown = p => p.waitForFunction(() => !document.getElementById('inPanel').hidden, null, { timeout: 8000 });
-  const replace = async p => { await Promise.all([p.waitForNavigation({ waitUntil: 'load' }), tap(p, '#inYes')]); await p.waitForTimeout(300); };
+  // a link carries blank days as null; the reloaded page fills them in and saves a quarter second later. Wait for that save
+  // (a fixed 300ms was 50ms of slack: on a busy machine the test read the nulls and crashed on week[1].s)
+  const replace = async p => { await Promise.all([p.waitForNavigation({ waitUntil: 'load' }), tap(p, '#inYes')]); await p.waitForTimeout(300); await p.waitForFunction(k => { try { const h = JSON.parse(localStorage.getItem(k)); return !h || !Array.isArray(h.week) || h.week.every(Boolean); } catch (e) { return true; } }, HK, { timeout: 5000 }).catch(() => {}); };
   const noErr = (tag, x) => ok(tag + ': no page errors', !x.errs.length, x.errs.join(' | '));
   const bundle = (hrs, pd) => ({ app: 'shift-hours', v: 1, saved: '2026-10-22T20:00:00.000Z', hours: hrs, perdiem: pd, view: 'hr' });
 
