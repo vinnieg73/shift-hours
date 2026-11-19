@@ -56,6 +56,18 @@ const R = []; const ok = (n, c, i) => R.push((c ? 'PASS ' : 'FAIL ') + n + (i !=
   ok('Christiansted: a VI area', /, VI$/.test(st.cty), st.cty);
   s = await pick('Tokyo'); ok('Tokyo: no such place', !s.some(x => /^Tokyo/.test(x)), JSON.stringify(s));
   s = await pick('Oahu'); st = await state(); ok('Oahu: island name is searchable', /Oahu, HI/.test(st.cty), st.cty + ' | ' + (s[0] || ''));
+  // a DoD row named for one town (November 2026 file: Kahului, Kona) wins over the island the town is on
+  const kah = D.areas.find(a => a[0] === 'Kahului' && a[1] === 'HI'), kona = D.areas.find(a => a[0] === 'Kona' && a[1] === 'HI');
+  if (kah && kona) {
+    s = await pick('Kahului'); st = await state();
+    ok('Kahului: its own DoD area, not Maui', /Defense Department rate area: Kahului, HI/.test(st.cty) && st.L === '$' + kah[4][0] && st.M === '$' + kah[3], st.cty + ' ' + st.L + ' ' + st.M);
+    s = await pick('Kailua Kona'); st = await state();
+    ok('Kailua Kona: DoD\'s Kona area', /Defense Department rate area: Kona, HI/.test(st.cty) && st.M === '$' + kona[3], st.cty + ' ' + st.M);
+    s = await pick('96740'); st = await state();
+    ok('ZIP 96740: Kona too', /Defense Department rate area: Kona, HI/.test(st.cty), st.cty);
+    s = await pick('Lahaina'); st = await state();
+    ok('Lahaina: still Maui', /Defense Department rate area: Maui, HI/.test(st.cty), st.cty);
+  }
   s = await pick('Apo Ae'); if (s.length) { st = await state(); ok('APO: still outside, no numbers', st.nums && /isn’t in this lookup/.test(st.ch), st.ch); } else ok('APO: no military mail place to test', true);
   s = await pick('Seattle, WA'); st = await state();
   ok('Seattle still GSA', /^Rate area: Seattle, WA/.test(st.cty) && !/Defense/.test(st.badges), st.cty);
