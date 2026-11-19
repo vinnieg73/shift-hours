@@ -15,7 +15,7 @@ SRV=$!
 trap 'kill $SRV 2>/dev/null; rm -rf "$OUT"' EXIT
 for i in $(seq 50); do curl -s -o /dev/null "http://127.0.0.1:$PORT/" && break; sleep 0.1; done
 BASE="http://127.0.0.1:$PORT/"
-TESTS=${*:-"smoke backup punch oconus audit review months"}
+TESTS=${*:-"smoke backup punch oconus audit review months sweep"}
 COMBOS=("402 874 1 light" "402 874 1 dark" "1280 900 0 light" "1280 900 0 dark")
 fail=0; total=0
 for t in $TESTS; do
@@ -24,6 +24,7 @@ for t in $TESTS; do
     oconus) f=tests/oconus.test.js; pre="''" ;;
     audit) f=tests/audit-2026-10-23.test.js; pre="" ;;
     review) f=tests/audit-2026-11-10.test.js; pre="" ;;
+    sweep) f=tests/sweep-2026-11-19.test.js; pre="" ;;
     *) f=tests/$t.test.js; pre="" ;;
   esac
   pids=()

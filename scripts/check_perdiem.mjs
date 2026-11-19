@@ -28,14 +28,18 @@ for (const [z, want] of Object.entries(exp.gsa)) {
   const s = PD.search(z);
   if (!s.length || s[0].zip !== z) fail('zip search', z);
 }
-// 2. every GeoNames ZIP resolves (inside CONUS to a rate, outside to the Defense Dept. message)
-let gOk = 0, gOut = 0, gInf = 0;
+// 2. every GeoNames ZIP resolves: inside CONUS to a rate; in Alaska, Hawaii and the territories to a Defense
+//    Department rate once build_oconus.py has added them (data.oconus), before that to the "not in this lookup"
+//    note; anywhere else (military mail) always to that note. So this passes before and after build_oconus.py
+const dodStates = new Set((data.oconus && data.oconus.states) || []);
+let gOk = 0, gOut = 0, gDod = 0, gInf = 0;
 for (const [z, st] of Object.entries(exp.geoZips)) {
   const r = PD.zip(z);
   if (!r) { fail('geonames zip missing', z); continue; }
-  const conus = exp.conus.includes(st);
-  if (conus ? !r.choices.length : !r.out) { fail('geonames zip unresolved', z + ' ' + st); continue; }
-  gOk++; if (!conus) gOut++; if (r.inferred) gInf++;
+  const conus = exp.conus.includes(st), dod = !conus && dodStates.has(st);
+  if (conus || dod ? r.out || !r.choices.length : !r.out) { fail('geonames zip unresolved', z + ' ' + st); continue; }
+  if (dod && !r.choices.every(c => PD.isDod(c.a))) { fail('geonames zip outside CONUS without a Defense Dept. rate', z + ' ' + st); continue; }
+  gOk++; if (dod) gDod++; else if (!conus) gOut++; if (r.inferred) gInf++;
 }
 // 3. every GeoNames city and every Census place / town / county is found by "Name, ST", as the first suggestion
 function checkName(kind, name, st) {
@@ -73,7 +77,7 @@ for (const [q, want] of variants) { const r = PD.search(q); if (!r.length || r[0
 for (const q of ['Daytn, OH', 'Springfeld, ZZ', '00000']) if (PD.search(q).length) fail('junk matched', q + ' -> ' + PD.search(q)[0].label);
 
 console.log(`GSA ZIPs: ${zOk}/${Object.keys(exp.gsa).length} match GSA's file exactly (${zSplit} of them split across 2+ areas, shown as a choice)`);
-console.log(`GeoNames ZIPs: ${gOk}/${Object.keys(exp.geoZips).length} resolve (${gOut} outside CONUS -> Defense Dept. note, ${gInf} not in GSA's file -> rate from same-name or nearest ZIP)`);
+console.log(`GeoNames ZIPs: ${gOk}/${Object.keys(exp.geoZips).length} resolve (${gDod} in AK, HI and the territories -> Defense Dept. rate, ${gOut} outside the lookup -> Defense Dept. note, ${gInf} not in GSA's file -> rate from same-name or nearest ZIP)`);
 console.log(`GeoNames places: ${geoN}/${exp.geoPlaces.length} found as first suggestion; Census places/towns/counties: ${cenN}/${exp.census.length}`);
 console.log(`Data records: ${recN} reachable; distinct places offering a choice of areas: ${multi.size}`);
 const kinds = Object.keys(fails);

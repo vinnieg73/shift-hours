@@ -702,6 +702,8 @@ details.help li::marker { color: var(--ink-3); }
   .well { padding: 0 6px 0 10px; }
   .fmtbox .seg button { width: 52px; }
   .wrap { --gut: 10px; }
+  /* three tabs across 320px: tighter keys, so "Per diem" is not cut off */
+  .viewbar .seg button { gap: 5px; padding: 0 4px; }
   .wrow .seg.ap button, .wrow .seg.ap button[aria-pressed="true"] { width: 40px; }
   #pdView .stat { padding: 10px 9px 11px; }
   /* day by day: the date gets its own line above hotel, meals and M&IE */
@@ -853,7 +855,7 @@ details.help li::marker { color: var(--ink-3); }
           <li>5-minute rounding: :01–:02 round down, :03–:04 round up. 6-minute (tenth of an hour): :01–:02 down, :03–:05 up.</li>
           <li>Decimal hours = minutes ÷ 60. For example 7:15 is 7.25 hours.</li>
           <li>Typing tips: <span id="helpTip"></span></li>
-          <li>The weekly timesheet uses the same clock format and rounding as above. Break is in minutes.</li>
+          <li>The weekly timecard uses the same clock format and rounding as above. Break is in minutes.</li>
           <li>Punch in stamps the start time and keeps the end time on the clock until you punch out. Add to day copies the shift into that day's row of the timecard.</li>
           <li>After the first visit the page opens with no signal. Per diem rates work offline once you have opened that tab.</li>
           <li>Everything you type is saved only in this browser, and Safari can clear a site's saved data after a week without a visit (not when the page is on your home screen). Save backup keeps a file you can Restore; Move carries the week to another device by link or QR code.</li>
@@ -867,7 +869,7 @@ details.help li::marker { color: var(--ink-3); }
       <div class="rhead"><span class="label">Decimal hours worked</span><button type="button" class="ghost" id="clear">Clear</button></div>
       <div class="readout">
       <div class="big"><div class="hm" id="hm">0.00</div><button type="button" class="copy" id="copyDec" aria-label="Copy decimal hours">Copy</button></div>
-      <div class="hmline"><span class="hm2" id="hm2">0:00</span><span class="hmu">h:mm</span><span class="mx"><span id="mins">0</span> min<span class="brkx" id="brk"></span></span><button type="button" class="copy" id="copyHm" aria-label="Copy hours and minutes">Copy</button></div>
+      <div class="hmline"><span class="hm2" id="hm2">0:00</span><span class="hmu">h:mm</span><span class="mx"><span id="mins">0</span> min<span id="brk"></span></span><button type="button" class="copy" id="copyHm" aria-label="Copy hours and minutes">Copy</button></div>
       </div>
       <span id="dec" hidden>0.00</span>
       <p class="words" id="words"></p>
@@ -967,7 +969,7 @@ details.help li::marker { color: var(--ink-3); }
         <div class="frow"><label class="label" for="pdLeave">Leave</label><input class="pick" type="date" id="pdLeave"></div>
         <div class="frow"><label class="label" for="pdBack">Return</label><input class="pick" type="date" id="pdBack"></div>
       </div>
-      <div class="tripout" id="pdTripOut">
+      <div class="tripout">
         <dl class="bd" id="pdBreak"></dl>
         <div class="big"><div class="hm" id="pdTotal"></div><button type="button" class="copy" id="pdCopy" aria-label="Copy trip total">Copy</button></div>
         <p class="pdnote" id="pdNote"></p>
@@ -988,7 +990,7 @@ details.help li::marker { color: var(--ink-3); }
           <li>If a meal was given to you (at a conference, say), its amount comes off that day. You always keep that day's incidentals, so a day never drops below that amount. Meals on a plane or a free hotel breakfast don't count.</li>
           <li>In the 48 states and DC, GSA sets rates by county. A ZIP gives GSA's exact answer; a city that crosses into another rate area lets you pick. Places not on GSA's list get the standard rate.</li>
           <li>Alaska, Hawaii, Puerto Rico, Guam, the U.S. Virgin Islands, American Samoa and the Northern Mariana Islands use the Defense Department's rates, which are set by town or island and can change by season. The rate year runs Oct 1 to Sep 30.</li>
-          <li class="src">Rates: <a href="https://www.gsa.gov/travel/plan-a-trip/per-diem-rates" target="_blank" rel="noopener">GSA per diem files</a> and the <a href="https://www.travel.dod.mil/Travel-Transportation-Rates/Per-Diem/Per-Diem-Rate-Lookup/" target="_blank" rel="noopener">Defense Department's OCONUS file</a>, <span id="pdFyNote">FY 2027</span>. Place names: <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (CC BY 4.0) and the U.S. Census Bureau. Check with your employer; their policy may differ.</li>
+          <li>Rates: <a href="https://www.gsa.gov/travel/plan-a-trip/per-diem-rates" target="_blank" rel="noopener">GSA per diem files</a> and the <a href="https://www.travel.dod.mil/Travel-Transportation-Rates/Per-Diem/Per-Diem-Rate-Lookup/" target="_blank" rel="noopener">Defense Department's OCONUS file</a>, <span id="pdFyNote">FY 2027</span>. Place names: <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (CC BY 4.0) and the U.S. Census Bureau. Check with your employer; their policy may differ.</li>
         </ul>
       </details>
     </section>
@@ -996,10 +998,10 @@ details.help li::marker { color: var(--ink-3); }
   </main>
   <main id="moView" hidden>
   <div class="mogrid">
-    <section class="card mmonth" aria-labelledby="moName">
+    <section class="card" aria-labelledby="moName">
       <div class="sr" id="moStatus" role="status" aria-live="polite" aria-atomic="true"></div>
       <div class="mnav">
-        <button type="button" class="mstep pv" id="moPrev" aria-label="Previous month"></button>
+        <button type="button" class="mstep" id="moPrev" aria-label="Previous month"></button>
         <b id="moName">Month</b>
         <button type="button" class="ghost" id="moToday" hidden>This month</button>
         <button type="button" class="mstep nx" id="moNext" aria-label="Next month"></button>
@@ -1037,9 +1039,8 @@ details.help li::marker { color: var(--ink-3); }
   const DEFAULT = {
     fmt: '12', nBreaks: 0, breakMode: 'min', round: 0, roundBreaks: 1,
     start: { v: '900', ap: 'am' }, end: { v: '530', ap: 'pm' },
-    br: [ { min: '30', s: { v: '1200', ap: 'pm' }, e: { v: '1230', ap: 'pm' } },
-          { min: '', s: { v: '', ap: 'pm' }, e: { v: '', ap: 'pm' } },
-          { min: '', s: { v: '', ap: 'pm' }, e: { v: '', ap: 'pm' } } ],
+    // breaks start blank (the boxes show an example as a placeholder), like the rest of a first visit
+    br: Array.from({ length: 3 }, () => ({ min: '', s: { v: '', ap: 'pm' }, e: { v: '', ap: 'pm' } })),
     // adj: minutes a clock change added to (or took off) a punched shift copied in by Add to day
     week: Array.from({ length: 7 }, () => ({ s: { v: '', ap: 'am' }, e: { v: '', ap: 'pm' }, brk: '', adj: 0 })),
     live: false, liveAt: 0, // on the clock since Punch in (liveAt: when, ms); the end time follows the clock while live
@@ -1049,7 +1050,7 @@ details.help li::marker { color: var(--ink-3); }
   // the clock-change fields (outAt, week[i].adj) also live in a side key that a page from before 2026-10-23 never
   // touches: such a page drops them when it re-saves KEY, and they are put back where the day still matches
   const XKEY = 'shift-hours-v1x';
-  let S, last = null, lastRead = null; // lastRead: the stored text adopt() last took // last: the stored text this tab last read or wrote
+  let S, last = null, lastRead = null; // last: the stored text this tab last read or wrote; lastRead: the stored text adopt() last took
   try { last = localStorage.getItem(KEY); S = JSON.parse(last) || null; } catch (e) { S = null; }
   function normalise(raw) {
     const D = JSON.parse(JSON.stringify(DEFAULT));
@@ -1072,7 +1073,7 @@ details.help li::marker { color: var(--ink-3); }
       roundBreaks: (raw.roundBreaks === 0 || raw.roundBreaks === '0') ? 0 : 1,
       start: fld(raw.start, D.start), end: fld(raw.end, D.end),
       liveAt: +raw.liveAt > 0 ? +raw.liveAt : 0, live: raw.live === true && +raw.liveAt > 0, outAt: +raw.outAt > 0 ? +raw.outAt : 0,
-      // a missing break row or time is blank (a move link sends empty rows as null), never the example times in DEFAULT
+      // a missing break row or time is blank (a move link sends empty rows as null)
       br: D.br.map((d, i) => { const b = obj(br[i]) ? br[i] : {}; return { min: str(b.min), s: obj(b.s) ? fld(b.s, d.s) : { v: '', ap: d.s.ap }, e: obj(b.e) ? fld(b.e, d.e) : { v: '', ap: d.e.ap } }; }),
       week: D.week.map((d, i) => { const w = obj(wk[i]) ? wk[i] : {}; return { s: obj(w.s) ? fld(w.s, d.s) : { ...d.s }, e: obj(w.e) ? fld(w.e, d.e) : { ...d.e }, brk: str(w.brk), adj: adj(w.adj) }; })
     };
@@ -1277,7 +1278,7 @@ details.help li::marker { color: var(--ink-3); }
     return end.getTimezoneOffset() - st.getTimezoneOffset();
   }
 
-  // one timesheet day -> { state, total, decs, errs, need }; same rounding as the calculator.
+  // one timecard day -> { state, total, decs, errs, need }; same rounding as the calculator.
   // state: 'empty' (nothing typed), 'ok', 'open' (something missing) or 'bad' (an invalid field)
   function computeDay(D) {
     const fmt = S.fmt, r = { decs: [], errs: {}, bad: {} };
@@ -1601,7 +1602,14 @@ details.help li::marker { color: var(--ink-3); }
   }
   // which day of the week a shift belongs to: the day it was punched in, else today
   const addDay = () => { const t = S.liveAt && Date.now() - S.liveAt < 36 * 3600e3 ? new Date(S.liveAt) : new Date(); return (t.getDay() + 6) % 7; };
-  const tick = () => { nowMark(); tickLive(); };
+  // the Add key names the day it will add to. Also run by the half-minute tick, so a page left open past midnight
+  // (or past the 36 hours a punch keeps its day) names the day the tap will really fill
+  function addKey() {
+    const ab = $('addWeek'), ai = addDay(), label = 'Add to ' + DAYS[ai];
+    if (!ab.dataset.arm && !ab.classList.contains('ok') && ab.textContent !== label) ab.textContent = label;
+    ab.setAttribute('aria-label', (S.live ? 'Punch out first, then add this shift to ' : 'Add this shift to ') + FULLDAY[ai] + ' on the timecard');
+  }
+  const tick = () => { nowMark(); tickLive(); addKey(); };
   let nowT = setInterval(tick, 30000);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { clearInterval(nowT); flush(); } else { syncFromStorage(); tick(); clearInterval(nowT); nowT = setInterval(tick, 30000); }
@@ -1612,9 +1620,11 @@ details.help li::marker { color: var(--ink-3); }
   function announce(txt, now) { clearTimeout(annT); const go = () => { $('status').textContent = txt; }; if (now) go(); else annT = setTimeout(go, 700); }
 
   // ---- other tabs ----
-  // another tab saved: take its state, unless this tab has edits waiting to be written (those win)
+  // another tab saved: take its state, unless this tab has edits waiting to be written (those win).
+  // The save timer alone does not count: every render arms it, also the render after an adopt, so a second
+  // save from the other tab a moment later was dropped. Only a timer that has something to write holds it off
   function adopt(txt) {
-    if (txt == null || txt === last || txt === lastRead || saveT) return;
+    if (txt == null || txt === last || txt === lastRead || (saveT && JSON.stringify(S) !== last)) return;
     let raw; try { raw = JSON.parse(txt); } catch (e) { return; }
     if (!raw || typeof raw !== 'object') return;
     // a tab still running an older copy of the page saves without week rows; keep ours
@@ -1666,22 +1676,19 @@ details.help li::marker { color: var(--ink-3); }
     $('legBrk').hidden = !(r.a != null && r.breaks && r.breaks.length);
     if (ok) $('words').textContent = ''; else $('words').textContent = (r.total == null && !r.block && !errs.length ? 'Enter a start and end time.' : '');
     const badges = $('badges'); badges.innerHTML = '';
-    const add = (txt, cls) => { const s = document.createElement('span'); s.className = 'badge ' + (cls || ''); s.textContent = txt; badges.appendChild(s); };
+    const add = (txt, err) => { const s = document.createElement('span'); s.className = err ? 'badge err' : 'badge'; s.textContent = txt; badges.appendChild(s); };
     // break field errors show under their own row; the badge says the total is paused and why
-    if (r.block) add('No total yet: ' + r.block.msg, r.block.bad ? 'err' : 'b');
-    if (vis.total) add(vis.total, 'err');
-    if (liveNote) add(liveNote, 'b');
-    r.decs.forEach(n => add(n, 'b'));
+    if (r.block) add('No total yet: ' + r.block.msg, r.block.bad);
+    if (vis.total) add(vis.total, true);
+    if (liveNote) add(liveNote);
+    r.decs.forEach(n => add(n));
     if (r.total != null) {
       if (r.overnight) add('Ends next day');
-      r.notes.forEach(n => add(n, 'b'));
+      r.notes.forEach(n => add(n));
     }
     $('copyDec').disabled = $('copyHm').disabled = !ok;
     // Add to day: today's row (or the day you punched in); off while the clock still holds the end time
-    { const ab = $('addWeek'), ai = addDay(), label = 'Add to ' + DAYS[ai];
-      if (!ab.dataset.arm && !ab.classList.contains('ok') && ab.textContent !== label) ab.textContent = label;
-      ab.disabled = !ok || S.live;
-      ab.setAttribute('aria-label', (S.live ? 'Punch out first, then add this shift to ' : 'Add this shift to ') + FULLDAY[ai] + ' on the timecard'); }
+    $('addWeek').disabled = !ok || S.live; addKey();
     announce(ok ? (t / 60).toFixed(2) + ' decimal hours, ' + plural(Math.floor(t / 60), 'hour') + ' ' + plural(t % 60, 'minute') : r.block ? 'No total yet: ' + r.block.msg : (Object.values(vis)[0] || ''));
     // punch strip
     drawStrip(r.a != null ? r : null); nowMark();
@@ -2305,15 +2312,15 @@ details.help li::marker { color: var(--ink-3); }
     if (r.full) rows.push(['M&IE', r.full + ' full day' + (r.full > 1 ? 's' : '') + (r.m != null ? ' × $' + r.m : ', by season'), usd(r.fullAmt)]);
     rows.push(['Travel days', r.travelN + ' × ' + (r.m != null ? whole(r.m * 0.75) : '75%') + (r.m != null ? ' (75%)' : ', by season'), usd(r.travelAmt)]);
     const gl = {}; r.days.forEach(x => x.given.forEach((g, j) => { if (g) gl[MEALN[j]] = (gl[MEALN[j]] || 0) + 1; }));
-    if (Object.keys(gl).length) rows.push(['Meals given', Object.keys(gl).map(k => gl[k] + ' ' + k).join(', '), '−' + usd(r.off), 'minus']);
-    $('pdBreak').innerHTML = rows.map(x => '<dt>' + x[0] + '</dt><dd>' + x[1] + '</dd><dd class="amt' + (x[3] ? ' ' + x[3] : '') + '">' + x[2] + '</dd>').join('');
+    if (Object.keys(gl).length) rows.push(['Meals given', Object.keys(gl).map(k => gl[k] + ' ' + k).join(', '), '−' + usd(r.off)]);
+    $('pdBreak').innerHTML = rows.map(x => '<dt>' + x[0] + '</dt><dd>' + x[1] + '</dd><dd class="amt">' + x[2] + '</dd>').join('');
     const where = cur.n || cur.label;
     $('pdNote').innerHTML = r.n === 1 ? 'Same-day trip: no lodging, and M&amp;IE usually only if it ran over 12 hours.' : '<b>' + r.nights + ' night' + (r.nights > 1 ? 's' : '') + '</b> in ' + esc(where) + ', ' + fmtD(r.days[0].d) + ' to ' + fmtD(r.days[r.n - 1].d) + '.';
     $('pdRows').innerHTML = r.days.map((x, i) => '<div class="drow">' +
       '<div class="dday"><b>' + fmtD(x.d) + '</b><span>' + (r.n === 1 ? 'Same day' : i === 0 ? 'Leave' : i === r.n - 1 ? 'Return' : 'Day ' + (i + 1)) + '</span></div>' +
       (x.night ? '<div class="dhotel">$' + x.hotel + '</div>' : '<div class="dhotel none">No hotel</div>') +
       '<div class="dmeals">' + MEALS.map((mm, j) => '<button type="button" class="mchip" data-k="' + x.k + '" data-j="' + j + '" aria-pressed="' + x.given[j] + '" aria-label="' + MEALN[j] + ' given ' + fmtD(x.d) + '">' + mm + '</button>').join('') + '</div>' +
-      '<div class="dmie"><b>' + usd(x.mie) + '</b><span class="' + (x.travel ? 'travel' : '') + '">' + (x.travel ? '75% day' : 'Full day') + '</span>' + (x.off ? '<span>−' + whole(x.off) + ' given</span>' : '') + '</div></div>').join('');
+      '<div class="dmie"><b>' + usd(x.mie) + '</b><span>' + (x.travel ? '75% day' : 'Full day') + '</span>' + (x.off ? '<span>−' + whole(x.off) + ' given</span>' : '') + '</div></div>').join('');
   }
   function render() { renderRates(); renderTrip(); }
   const set = (fn) => { fn(); save(); render(); };

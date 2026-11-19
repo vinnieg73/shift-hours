@@ -26,7 +26,8 @@ One page, no build step.
 | `data/perdiem-fy2027.json` | Per diem rates and place names, loaded only when the Per diem tab opens |
 | `scripts/` | Yearly rebuild and checks for the per diem data |
 | `tests/` | Page tests (Playwright) |
-| `HANDOFF.md` | Working notes: how each part works, decisions, gotchas |
+| `HANDOFF.md` | Working notes: how each part works now, decisions, gotchas |
+| `CHANGELOG.md` | The history of every change, newest first |
 
 ## Run it locally
 
@@ -41,7 +42,7 @@ Needs Node, Playwright with Chromium, and Python 3.
 
 ```sh
 tests/run.sh            # everything: phone and desktop, light and dark
-tests/run.sh smoke      # one test: smoke backup punch oconus audit review months
+tests/run.sh smoke      # one test: smoke backup punch oconus audit review months sweep
 ```
 
 ## Deploy
