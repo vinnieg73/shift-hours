@@ -76,7 +76,9 @@ for (const [c, st] of CITY_CASES) {
   const ours = PD.search(c + ', ' + st)[0];
   console.log(`info GSA city search "${c}, ${st}": ${g.map(x => (x.city || '?') + ' $' + x.l[0] + '/$' + x.meals + (x.std === 'true' ? ' (standard)' : '')).join(' | ')}; ours: ${ours.choices.map(x => data.areas[x.a][0]).join(' | ')}`);
 }
-// M&IE breakdown: every tier in our data must match GSA's breakfast / lunch / dinner / incidentals
+// M&IE breakdown: every tier a GSA area uses must match GSA's breakfast / lunch / dinner / incidentals
+// (the Defense Department totals that build_oconus.py adds are not GSA's, so they are not asked about)
+const gsaTiers = new Set(data.areas.filter(a => !(a[5] && a[5].dod)).map(a => String(a[3])));
 const mj = await get(`rates/conus/mie/${data.fy}`);
 const lc = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k.toLowerCase(), v]));
 const tiers = [];
@@ -85,11 +87,12 @@ const tiers = [];
   else if (x && typeof x === 'object') { const o = lc(x); if ('total' in o && 'breakfast' in o) tiers.push(o); else Object.values(x).forEach(walk); }
 })(mj);
 for (const [tot, split] of Object.entries(data.mie)) {
+  if (!gsaTiers.has(tot)) continue;
   const t = tiers.find(o => +o.total === +tot);
   const g = t && [+t.breakfast, +t.lunch, +t.dinner, +(t.incidentals ?? t.incidental)];
   const ok = g && JSON.stringify(g) === JSON.stringify(split);
   ok ? pass++ : fail++;
   console.log(`${ok ? 'OK  ' : 'FAIL'} M&IE $${tot}: ours ${split.join('/')}  GSA ${g ? g.join('/') : 'not found in ' + JSON.stringify(mj).slice(0, 300)}`);
 }
-console.log(`spot check: ${pass} OK, ${fail} FAIL of ${CASES.length + Object.keys(data.mie).length}`);
+console.log(`spot check: ${pass} OK, ${fail} FAIL of ${CASES.length + gsaTiers.size}`);
 process.exit(fail ? 1 : 0);

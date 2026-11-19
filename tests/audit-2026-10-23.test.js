@@ -246,7 +246,7 @@ if (OLD) over['/old.html'] = OLD;
     const N = await mk({ clock: new Date('2026-11-01T02:00:00Z') });
     await N.p.goto(base); await N.p.evaluate(() => localStorage.clear()); await N.p.reload(); await N.p.waitForTimeout(200);
     let O = null;
-    const oldSave = async () => { await N.p.clock.runFor(400); await O.waitForTimeout(300); await O.$eval('#roundSeg button[data-r="0"]', e => e.click()); await N.p.clock.runFor(400); await N.p.waitForTimeout(100); await N.p.clock.runFor(400); };
+    const oldSave = async () => { await N.p.clock.runFor(400); await O.waitForTimeout(300); await O.$eval('#roundSeg button[data-r="0"]', e => e.click()); await N.p.clock.runFor(400); await O.waitForTimeout(350); await N.p.clock.runFor(400); };
     await tap(N.p, '#punch'); await N.p.clock.runFor(9 * 3600e3); await tap(N.p, '#punch'); await N.p.waitForTimeout(50);
     await N.p.clock.runFor(400); // opened after the punch (an old tab that is live too re-stamps the end itself, in either page)
     O = await N.ctx.newPage(); O.on('pageerror', e => N.errs.push('old pageerror ' + e.message));
@@ -266,7 +266,10 @@ if (OLD) over['/old.html'] = OLD;
     ok('R3: a backup made then still carries the day\'s correction', bk === 60, bk);
     await N.p.reload(); await N.p.waitForTimeout(200);
     ok('R3: and after a reload', (await T(N.p, '#wDec')) === '9.00', await T(N.p, '#wDec'));
-    // a day edited in the old page is a typed shift again: no correction is put back
+    // a day edited in the old page is a typed shift again: no correction is put back.
+    // First let the reloaded page write what it put back (its save waits on the fake clock) and the old tab take it,
+    // so that write cannot land after the old tab's edit and undo it (this check used to fail now and then)
+    await N.p.clock.runFor(400); await O.waitForTimeout(300);
     await O.$eval('#wd5', e => e.click()); await O.$eval('#w5e', e => { e.value = '700'; e.dispatchEvent(new Event('input', { bubbles: true })); }); await oldSave();
     ok('R3: a day changed in the old page gets no correction back', (await T(N.p, '#wDec')) === '9.00' && !(await N.p.evaluate(() => window.__hours.S.week[5].adj)), await T(N.p, '#wDec'));
     noErr('R3', N);
