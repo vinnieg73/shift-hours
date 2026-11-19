@@ -30,6 +30,10 @@ Semicolon-delimited, trailing `;`:
 `country/state;location;season start mm/dd;season end mm/dd;lodging;local meals;proportional meals;incidentals;footnote no.;footnote rate;max per diem;effective date`
 Matched against the same row in ocallhist (HERAT (NON-US FACILITIES): lodging 99, M&IE 40, meals 32, proportional 25, incidentals 8, max 139). **M&IE = local meals + incidentals.** Checked: lodging + local meals + incidentals = max per diem on all 1,612 rows.
 
+### November 2026 file (added 2026-11-19)
+`OCONUS-ASCII-2026.zip` here is now the copy Vinnie downloaded in his own browser on 2026-11-19 (482,105 bytes; monthly files 01-01-26 through 11-01-26, the newest dated 2026-10-26 inside the zip). Scripted downloads were refused with a 403 and were not forced. Its `10-01-26oconus.txt` is byte for byte the file already here.
+- `11-01-26oconus.txt`, `11-01-26oconusnm.txt` (from that zip): 1,617 rows. For the seven non-foreign areas the only difference from October is two added rows, `HAWAII;KAHULUI` and `HAWAII;KONA` (each 242 lodging, 130 + 33 M&IE, max 405, effective 10/01/2025). The site's data file is built from this file (`build_oconus.py` takes the newest `*oconus.txt`). The REL zip, PDF and `ocallhist-2026.txt` here are still the September copies.
+
 ## M&IE breakdown (breakfast / lunch / dinner / incidentals)
 
 DTMO has no breakdown page of its own. Its Per Diem and Meal Rates pages link "CONUS Meals & Incidentals Breakdown" to GSA and "Foreign Meals & Incidentals Breakdown" to State (`https://aoprals.state.gov/content.asp?content_id=114&menu_id=78`, which now redirects to the State homepage). The live table is State's copy of FTR Chapter 301 Appendix B, which says it applies to **both non-foreign areas (DoD rates) and foreign areas**:
